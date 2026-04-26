@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Precipitazioni Lombardia – Ultimi 30 giorni</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box}
+  html,body{height:100%;font-family:'Segoe UI',Arial,sans-serif}
+  body{display:flex;flex-direction:column;background:#f0f2f5}
+
+  header{background:#1b3f6e;color:#fff;padding:0 20px;height:50px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;box-shadow:0 2px 6px rgba(0,0,0,.25)}
+  .hdr-l{display:flex;align-items:center;gap:10px}
+  .hdr-l h1{font-size:15px;font-weight:600}
+  .hdr-sub{font-size:11px;opacity:.65}
+  #badge{font-size:11px;padding:3px 10px;border-radius:20px;background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.25)}
+
+  .wrap{display:flex;flex:1;overflow:hidden}
+
+  aside{width:250px;background:#fff;border-right:1px solid #dde3ea;display:flex;flex-direction:column;overflow:hidden;flex-shrink:0}
+  .leg{padding:12px 14px;border-bottom:1px solid #eee}
+  .sec{font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:#aaa;margin-bottom:7px}
+  .grad{height:9px;border-radius:5px;margin-bottom:4px;background:linear-gradient(to right,#1a6eaa,#29b6ef,#26c9a0,#8fd44e,#f0c040,#f08030,#e02010)}
+  .grad-l{display:flex;justify-content:space-between;font-size:10px;color:#bbb}
+  .stats{display:grid;grid-template-columns:1fr 1fr;gap:6px;padding:10px 14px;border-bottom:1px solid #eee}
+  .stat{background:#f5f7fb;border-radius:7px;padding:7px 10px}
+  .sv{font-size:18px;font-weight:700;color:#1b3f6e;line-height:1}
+  .sl{font-size:9px;color:#aaa;text-transform:uppercase;margin-top:2px}
+  #infobox{display:none;padding:10px 14px;border-bottom:1px solid #eee;background:#f0f6ff}
+  #info-nome{font-size:13px;font-weight:700;margin-bottom:5px}
+  #info-body{font-size:11px;color:#555;line-height:1.8}
+  .lhdr{font-size:10px;text-transform:uppercase;letter-spacing:.07em;color:#bbb;padding:7px 14px 3px;border-bottom:1px solid #eee}
+  #stlist{flex:1;overflow-y:auto}
+  #stlist::-webkit-scrollbar{width:4px}
+  #stlist::-webkit-scrollbar-thumb{background:#dde;border-radius:2px}
+  .srow{display:flex;align-items:center;gap:8px;padding:6px 14px;border-bottom:1px solid #f2f2f2;cursor:pointer;transition:background .1s}
+  .srow:hover{background:#f0f5ff}
+  .srow.active{background:#ddeeff}
+  .sdot{width:9px;height:9px;border-radius:50%;flex-shrink:0;border:1px solid rgba(0,0,0,.1)}
+  .sname{flex:1;font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#333}
+  .smm{font-size:11px;font-weight:700;color:#1b3f6e;min-width:30px;text-align:right}
+
+  #map{flex:1}
+
+  .leaflet-popup-content-wrapper{border-radius:8px!important;box-shadow:0 4px 20px rgba(0,0,0,.15)!important}
+  .leaflet-popup-content{margin:10px 14px!important;min-width:160px}
+  .p-nome{font-size:13px;font-weight:700;margin-bottom:7px}
+  .p-row{display:flex;justify-content:space-between;font-size:11px;padding:3px 0;border-bottom:1px solid #f5f5f5}
+  .p-row:last-child{border:none}
+  .p-k{color:#aaa}
+  .p-v{font-weight:600;color:#222}
+
+  #loader{position:fixed;inset:0;background:rgba(255,255,255,.96);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;z-index:9999}
+  .spinner{width:40px;height:40px;border:3px solid #eee;border-top-color:#1b3f6e;border-radius:50%;animation:spin .7s linear infinite}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  #loader-msg{font-size:13px;color:#666}
+  #loader-sub{font-size:11px;color:#aaa}
+
+  .fonte{font-size:10px;color:#aaa;padding:4px 14px;border-top:1px solid #eee;text-align:center;flex-shrink:0;background:#fff}
+  .fonte a{color:#1b3f6e}
+</style>
+</head>
+<body>
+
+<div id="loader">
+  <div class="spinner"></div>
+  <div id="loader-msg">Caricamento mappa…</div>
+  <div id="loader-sub"></div>
+</div>
+
+<header>
+  <div class="hdr-l">
+    <span style="font-size:22px">🌧</span>
+    <div>
+      <h1>Precipitazioni Lombardia</h1>
+      <div class="hdr-sub" id="datehdr">Ultimi 30 giorni · ARPA Open Data</div>
+    </div>
+  </div>
+  <div id="badge">caricamento…</div>
+</header>
+
+<div class="wrap">
+  <aside>
+    <div class="leg">
+      <div class="sec">mm cumulati (30 giorni)</div>
+      <div class="grad"></div>
+      <div class="grad-l"><span>0</span><span>50</span><span>120</span><span>200</span><span>260+</span></div>
+    </div>
+    <div class="stats">
+      <div class="stat"><div class="sv" id="sn">—</div><div class="sl">Stazioni</div></div>
+      <div class="stat"><div class="sv" id="smx">—</div><div class="sl">Max mm</div></div>
+      <div class="stat"><div class="sv" id="sav">—</div><div class="sl">Media mm</div></div>
+      <div class="stat"><div class="sv" id="smn">—</div><div class="sl">Min mm</div></div>
+    </div>
+    <div id="infobox">
+      <div id="info-nome"></div>
+      <div id="info-body"></div>
+    </div>
+    <div class="lhdr">Classifica stazioni</div>
+    <div id="stlist"></div>
+  </aside>
+  <div id="map"></div>
+</div>
+
+<div class="fonte">
+  Fonte: <a href="https://www.dati.lombardia.it" target="_blank">Open Data Regione Lombardia</a> · ARPA Lombardia &nbsp;|&nbsp;
+  Mappa: <a href="https://www.openstreetmap.org/copyright" target="_blank">© OpenStreetMap contributors</a>
+</div>
+
+<script>
+(function () {
+  'use strict';
+
+  // ── Date ──────────────────────────────────────────────────────────────────
+  var now  = new Date();
+  var past = new Date();
+  past.setDate(now.getDate() - 30);
+
+  function fmtDate(d) {
+    return d.toLocaleDateString('it-IT', {day:'2-digit', month:'short', year:'numeric'});
+  }
+  function fmtISO(d) {
+    return d.toISOString().slice(0, 10);
+  }
+
+  document.getElementById('datehdr').textContent =
+    fmtDate(past) + ' – ' + fmtDate(now) + ' · ARPA Open Data';
+
+  // ── Colore ─────────────────────────────────────────────────────────────────
+  function col(mm) {
+    if (mm <  50) return '#1a6eaa';
+    if (mm <  90) return '#29b6ef';
+    if (mm < 130) return '#26c9a0';
+    if (mm < 170) return '#8fd44e';
+    if (mm < 210) return '#f0c040';
+    if (mm < 250) return '#f08030';
+    return '#e02010';
+  }
+
+  // ── Mappa OSM ──────────────────────────────────────────────────────────────
+  var map = L.map('map').setView([45.65, 9.85], 8);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    maxZoom: 19,
+    subdomains: 'abc',
+    attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors | Dati: ARPA Lombardia'
+  }).addTo(map);
+
+  // ── Dati campione (fallback) ───────────────────────────────────────────────
+  var FALLBACK = [
+    {n:"Milano Lambrate",    lat:45.484, lon:9.238,  mm:58,  q:122,  p:"MI"},
+    {n:"Milano Brera",       lat:45.472, lon:9.186,  mm:54,  q:121,  p:"MI"},
+    {n:"Sesto S. Giovanni",  lat:45.534, lon:9.234,  mm:64,  q:134,  p:"MI"},
+    {n:"Rho",                lat:45.530, lon:9.041,  mm:61,  q:154,  p:"MI"},
+    {n:"Monza",              lat:45.584, lon:9.274,  mm:73,  q:162,  p:"MB"},
+    {n:"Varedo",             lat:45.601, lon:9.157,  mm:67,  q:188,  p:"MB"},
+    {n:"Varese Ville Ponti", lat:45.821, lon:8.825,  mm:149, q:382,  p:"VA"},
+    {n:"Varese Capolago",    lat:45.868, lon:8.834,  mm:162, q:432,  p:"VA"},
+    {n:"Luino",              lat:46.000, lon:8.744,  mm:183, q:202,  p:"VA"},
+    {n:"Busto Arsizio",      lat:45.612, lon:8.852,  mm:94,  q:224,  p:"VA"},
+    {n:"Gallarate",          lat:45.660, lon:8.789,  mm:87,  q:238,  p:"VA"},
+    {n:"Sesto Calende",      lat:45.731, lon:8.638,  mm:96,  q:197,  p:"VA"},
+    {n:"Saronno",            lat:45.624, lon:9.040,  mm:78,  q:212,  p:"VA"},
+    {n:"Como",               lat:45.810, lon:9.085,  mm:125, q:201,  p:"CO"},
+    {n:"Bellagio",           lat:45.987, lon:9.260,  mm:142, q:210,  p:"CO"},
+    {n:"Erba",               lat:45.812, lon:9.222,  mm:108, q:322,  p:"CO"},
+    {n:"Cantù",              lat:45.737, lon:9.128,  mm:97,  q:370,  p:"CO"},
+    {n:"Chiavenna",          lat:46.324, lon:9.397,  mm:168, q:333,  p:"SO"},
+    {n:"Morbegno",           lat:46.135, lon:9.578,  mm:151, q:247,  p:"SO"},
+    {n:"Sondrio",            lat:46.170, lon:9.875,  mm:199, q:307,  p:"SO"},
+    {n:"Bormio",             lat:46.468, lon:10.374, mm:137, q:1225, p:"SO"},
+    {n:"Livigno",            lat:46.537, lon:10.137, mm:92,  q:1816, p:"SO"},
+    {n:"Tirano",             lat:46.215, lon:10.170, mm:127, q:441,  p:"SO"},
+    {n:"Lecco",              lat:45.855, lon:9.397,  mm:117, q:215,  p:"LC"},
+    {n:"Valsassina",         lat:45.976, lon:9.450,  mm:184, q:760,  p:"LC"},
+    {n:"Oggiono",            lat:45.787, lon:9.338,  mm:105, q:268,  p:"LC"},
+    {n:"Lecco Balisio",      lat:45.918, lon:9.368,  mm:158, q:490,  p:"LC"},
+    {n:"Bergamo",            lat:45.674, lon:9.700,  mm:88,  q:238,  p:"BG"},
+    {n:"Clusone",            lat:45.890, lon:9.945,  mm:119, q:648,  p:"BG"},
+    {n:"Lovere",             lat:45.811, lon:10.070, mm:112, q:201,  p:"BG"},
+    {n:"Caravaggio",         lat:45.499, lon:9.641,  mm:62,  q:103,  p:"BG"},
+    {n:"Sarnico",            lat:45.679, lon:9.966,  mm:94,  q:186,  p:"BG"},
+    {n:"Seriate",            lat:45.682, lon:9.727,  mm:83,  q:213,  p:"BG"},
+    {n:"Brescia",            lat:45.541, lon:10.213, mm:76,  q:149,  p:"BS"},
+    {n:"Breno",              lat:45.952, lon:10.299, mm:132, q:327,  p:"BS"},
+    {n:"Edolo",              lat:46.177, lon:10.332, mm:172, q:698,  p:"BS"},
+    {n:"Gargnano",           lat:45.694, lon:10.659, mm:99,  q:65,   p:"BS"},
+    {n:"Iseo",               lat:45.659, lon:10.045, mm:101, q:186,  p:"BS"},
+    {n:"Desenzano",          lat:45.468, lon:10.537, mm:62,  q:67,   p:"BS"},
+    {n:"Palazzolo Oglio",    lat:45.598, lon:9.879,  mm:79,  q:166,  p:"BS"},
+    {n:"Pavia",              lat:45.185, lon:9.155,  mm:45,  q:77,   p:"PV"},
+    {n:"Vigevano",           lat:45.318, lon:8.859,  mm:48,  q:116,  p:"PV"},
+    {n:"Voghera",            lat:44.997, lon:9.007,  mm:40,  q:106,  p:"PV"},
+    {n:"Lodi",               lat:45.311, lon:9.502,  mm:42,  q:87,   p:"LO"},
+    {n:"Codogno",            lat:45.160, lon:9.704,  mm:38,  q:72,   p:"LO"},
+    {n:"Cremona",            lat:45.133, lon:10.027, mm:45,  q:45,   p:"CR"},
+    {n:"Crema",              lat:45.363, lon:9.686,  mm:56,  q:79,   p:"CR"},
+    {n:"Mantova",            lat:45.157, lon:10.791, mm:38,  q:19,   p:"MN"},
+    {n:"Guidizzolo",         lat:45.317, lon:10.582, mm:43,  q:64,   p:"MN"},
+  ];
+
+  // ── Carica dati ARPA live ──────────────────────────────────────────────────
+  function loadARPA() {
+    document.getElementById('loader-sub').textContent = 'Connessione ARPA Lombardia…';
+
+    var stUrl = 'https://www.dati.lombardia.it/resource/nf78-nj6b.json'
+      + '?$limit=600&$select=idsensore,nomestazione,lat,lng,quota,provincia'
+      + "&$where=tipologiasensore='Pioggia'";
+
+    var prUrl = 'https://www.dati.lombardia.it/resource/pstb-pga6.json'
+      + '?$select=idsensore,sum(valore)%20as%20tot'
+      + '&$where=data>=%27' + fmtISO(past) + 'T00:00:00%27'
+      + '&$group=idsensore&$limit=5000';
+
+    Promise.all([fetch(stUrl), fetch(prUrl)])
+      .then(function (responses) {
+        if (!responses[0].ok || !responses[1].ok) throw new Error('HTTP error');
+        return Promise.all([responses[0].json(), responses[1].json()]);
+      })
+      .then(function (results) {
+        var stazioni = results[0];
+        var precip   = results[1];
+
+        document.getElementById('loader-sub').textContent = 'Elaborazione dati…';
+
+        var stMap = {};
+        stazioni.forEach(function (s) {
+          var lat = parseFloat(s.lat), lon = parseFloat(s.lng);
+          if (!isNaN(lat) && !isNaN(lon) && lat > 44 && lat < 47 && lon > 7 && lon < 12) {
+            stMap[s.idsensore] = {
+              n: s.nomestazione || '—',
+              lat: lat, lon: lon,
+              q: s.quota || '—',
+              p: s.provincia || '—'
+            };
+          }
+        });
+
+        var out = [];
+        precip.forEach(function (pr) {
+          var mm = parseFloat(pr.tot);
+          if (isNaN(mm) || mm < 0) return;
+          var st = stMap[pr.idsensore];
+          if (!st) return;
+          out.push({ n: st.n, lat: st.lat, lon: st.lon, q: st.q, p: st.p, mm: Math.round(mm * 10) / 10 });
+        });
+
+        if (out.length < 10) throw new Error('dati insufficienti');
+        render(out, '🟢 ARPA live');
+      })
+      .catch(function (err) {
+        console.warn('ARPA non disponibile, uso dati campione:', err.message);
+        render(FALLBACK, '🟡 dati campione');
+      });
+  }
+
+  // ── Render mappa + sidebar ─────────────────────────────────────────────────
+  function render(dati, fonte) {
+    var sorted = dati.slice().sort(function (a, b) { return b.mm - a.mm; });
+    var vals   = dati.map(function (d) { return d.mm; });
+    var mx     = Math.max.apply(null, vals);
+    var mn     = Math.min.apply(null, vals);
+    var av     = Math.round(vals.reduce(function (a, b) { return a + b; }, 0) / vals.length);
+
+    document.getElementById('sn').textContent  = dati.length;
+    document.getElementById('smx').textContent = Math.round(mx);
+    document.getElementById('sav').textContent = av;
+    document.getElementById('smn').textContent = Math.round(mn);
+    document.getElementById('badge').textContent = dati.length + ' stazioni · ' + fonte;
+
+    var mkrs = {};
+    var selNome = null;
+
+    function selectSt(s, rank) {
+      if (selNome) {
+        var prev = document.getElementById('r-' + selNome);
+        if (prev) prev.classList.remove('active');
+      }
+      selNome = s.n;
+      var row = document.getElementById('r-' + s.n);
+      if (row) { row.classList.add('active'); row.scrollIntoView({ block: 'nearest' }); }
+      document.getElementById('infobox').style.display = 'block';
+      var nm = document.getElementById('info-nome');
+      nm.textContent = s.n;
+      nm.style.color = col(s.mm);
+      document.getElementById('info-body').innerHTML =
+        '<b>' + s.mm + ' mm</b> pioggia cumulata<br>' +
+        'Provincia: <b>' + s.p + '</b> &nbsp;·&nbsp; Quota: <b>' + s.q + ' m</b><br>' +
+        'Ranking: <b>#' + rank + '</b> su ' + dati.length + ' stazioni';
+    }
+
+    // Marker sulla mappa
+    dati.forEach(function (s) {
+      var r    = Math.max(7, Math.min(22, 7 + s.mm / 13));
+      var c    = col(s.mm);
+      var rank = sorted.indexOf(s) + 1;
+
+      var m = L.circleMarker([s.lat, s.lon], {
+        radius: r, fillColor: c, color: '#fff', weight: 1.5, fillOpacity: 0.88
+      }).addTo(map);
+
+      m.bindPopup(
+        '<div class="p-nome" style="color:' + c + '">' + s.n + '</div>' +
+        '<div class="p-row"><span class="p-k">Pioggia 30gg</span><span class="p-v">' + s.mm + ' mm</span></div>' +
+        '<div class="p-row"><span class="p-k">Provincia</span><span class="p-v">' + s.p + '</span></div>' +
+        '<div class="p-row"><span class="p-k">Quota</span><span class="p-v">' + s.q + ' m slm</span></div>' +
+        '<div class="p-row"><span class="p-k">Ranking</span><span class="p-v">#' + rank + ' / ' + dati.length + '</span></div>'
+      );
+
+      m.on('click', (function (s, rank) {
+        return function () { selectSt(s, rank); };
+      }(s, rank)));
+
+      mkrs[s.n] = m;
+    });
+
+    // Lista sidebar
+    var list = document.getElementById('stlist');
+    sorted.forEach(function (s, i) {
+      var d = document.createElement('div');
+      d.className = 'srow';
+      d.id = 'r-' + s.n;
+      d.innerHTML =
+        '<div class="sdot" style="background:' + col(s.mm) + '"></div>' +
+        '<div class="sname" title="' + s.n + '">' + s.n + '</div>' +
+        '<div class="smm">' + s.mm + '</div>';
+      d.onclick = (function (s, i) {
+        return function () {
+          map.flyTo([s.lat, s.lon], 12, { duration: 0.8 });
+          selectSt(s, i + 1);
+          mkrs[s.n].openPopup();
+        };
+      }(s, i));
+      list.appendChild(d);
+    });
+
+    document.getElementById('loader').style.display = 'none';
+  }
+
+  // ── Avvio ──────────────────────────────────────────────────────────────────
+  loadARPA();
+
+}());
+</script>
+</body>
+</html>
