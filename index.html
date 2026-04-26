@@ -22,7 +22,7 @@
   aside{width:250px;background:#fff;border-right:1px solid #dde3ea;display:flex;flex-direction:column;overflow:hidden;flex-shrink:0}
   .leg{padding:12px 14px;border-bottom:1px solid #eee}
   .sec{font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:#aaa;margin-bottom:7px}
-  .grad{height:9px;border-radius:5px;margin-bottom:4px;background:linear-gradient(to right,#1a6eaa,#29b6ef,#26c9a0,#8fd44e,#f0c040,#f08030,#e02010)}
+  .grad{height:9px;border-radius:5px;margin-bottom:4px;background:linear-gradient(to right,#d0e8ff,#7ec8f8,#26c9a0,#8fd44e,#f0c040,#f08030,#e02010,#9b30ff)}
   .grad-l{display:flex;justify-content:space-between;font-size:10px;color:#bbb}
   .stats{display:grid;grid-template-columns:1fr 1fr;gap:6px;padding:10px 14px;border-bottom:1px solid #eee}
   .stat{background:#f5f7fb;border-radius:7px;padding:7px 10px}
@@ -42,7 +42,15 @@
   .sname{flex:1;font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#333}
   .smm{font-size:11px;font-weight:700;color:#1b3f6e;min-width:30px;text-align:right}
 
-  #map{flex:1}
+  #map{flex:1;position:relative}
+
+  /* Heatmap canvas overlay */
+  #heat-canvas{
+    position:absolute;
+    top:0;left:0;
+    pointer-events:none;
+    z-index:400;
+  }
 
   .leaflet-popup-content-wrapper{border-radius:8px!important;box-shadow:0 4px 20px rgba(0,0,0,.15)!important}
   .leaflet-popup-content{margin:10px 14px!important;min-width:160px}
@@ -60,6 +68,10 @@
 
   .fonte{font-size:10px;color:#aaa;padding:4px 14px;border-top:1px solid #eee;text-align:center;flex-shrink:0;background:#fff}
   .fonte a{color:#1b3f6e}
+
+  /* Opacity slider */
+  .opacity-ctrl{display:flex;align-items:center;gap:8px;padding:8px 14px;border-bottom:1px solid #eee;font-size:11px;color:#666}
+  .opacity-ctrl input{flex:1;accent-color:#1b3f6e}
 </style>
 </head>
 <body>
@@ -86,7 +98,12 @@
     <div class="leg">
       <div class="sec">mm cumulati (30 giorni)</div>
       <div class="grad"></div>
-      <div class="grad-l"><span>0</span><span>50</span><span>120</span><span>200</span><span>260+</span></div>
+      <div class="grad-l"><span>0</span><span>50</span><span>120</span><span>200</span><span>300+</span></div>
+    </div>
+    <div class="opacity-ctrl">
+      <span>Trasparenza mappa</span>
+      <input type="range" id="opSlider" min="10" max="90" value="55">
+      <span id="opVal">55%</span>
     </div>
     <div class="stats">
       <div class="stat"><div class="sv" id="sn">—</div><div class="sl">Stazioni</div></div>
@@ -101,7 +118,9 @@
     <div class="lhdr">Classifica stazioni</div>
     <div id="stlist"></div>
   </aside>
-  <div id="map"></div>
+  <div id="map">
+    <canvas id="heat-canvas"></canvas>
+  </div>
 </div>
 
 <div class="fonte">
@@ -128,24 +147,162 @@
   document.getElementById('datehdr').textContent =
     fmtDate(past) + ' – ' + fmtDate(now) + ' · ARPA Open Data';
 
-  // ── Colore ─────────────────────────────────────────────────────────────────
+  // ── Colore IDW ─────────────────────────────────────────────────────────────
+  // Scala: bianco→azzurro chiaro→blu→ciano→verde→giallo→arancio→rosso→viola
+  var STOPS = [
+    { v:   0, r: 208, g: 232, b: 255 },
+    { v:  20, r: 126, g: 200, b: 248 },
+    { v:  50, r:  41, g: 182, b: 239 },
+    { v:  90, r:  38, g: 201, b: 160 },
+    { v: 130, r: 143, g: 212, b:  78 },
+    { v: 170, r: 240, g: 192, b:  64 },
+    { v: 220, r: 240, g: 128, b:  48 },
+    { v: 280, r: 224, g:  32, b:  16 },
+    { v: 350, r: 155, g:  48, b: 255 },
+  ];
+
+  function mmToRGB(mm) {
+    var clamped = Math.max(0, Math.min(mm, STOPS[STOPS.length-1].v));
+    for (var i = 1; i < STOPS.length; i++) {
+      if (clamped <= STOPS[i].v) {
+        var t = (clamped - STOPS[i-1].v) / (STOPS[i].v - STOPS[i-1].v);
+        return {
+          r: Math.round(STOPS[i-1].r + t * (STOPS[i].r - STOPS[i-1].r)),
+          g: Math.round(STOPS[i-1].g + t * (STOPS[i].g - STOPS[i-1].g)),
+          b: Math.round(STOPS[i-1].b + t * (STOPS[i].b - STOPS[i-1].b))
+        };
+      }
+    }
+    return { r:155, g:48, b:255 };
+  }
+
   function col(mm) {
-    if (mm <  50) return '#1a6eaa';
-    if (mm <  90) return '#29b6ef';
-    if (mm < 130) return '#26c9a0';
-    if (mm < 170) return '#8fd44e';
-    if (mm < 210) return '#f0c040';
-    if (mm < 250) return '#f08030';
-    return '#e02010';
+    var c = mmToRGB(mm);
+    return 'rgb('+c.r+','+c.g+','+c.b+')';
   }
 
   // ── Mappa OSM ──────────────────────────────────────────────────────────────
-  var map = L.map('map').setView([45.65, 9.85], 8);
+  var map = L.map('map', {zoomAnimation: true}).setView([45.65, 9.85], 8);
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
     maxZoom: 19,
     subdomains: 'abc',
     attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors | Dati: ARPA Lombardia'
   }).addTo(map);
+
+  // ── Canvas heatmap ─────────────────────────────────────────────────────────
+  var canvas = document.getElementById('heat-canvas');
+  var ctx = canvas.getContext('2d');
+  var currentData = [];
+  var heatOpacity = 0.55;
+  var renderPending = false;
+  var renderTimer = null;
+
+  function resizeCanvas() {
+    var mapEl = document.getElementById('map');
+    canvas.width  = mapEl.clientWidth;
+    canvas.height = mapEl.clientHeight;
+  }
+
+  // IDW: Inverse Distance Weighting interpolation
+  // For each pixel on the canvas, compute weighted average of nearby stations
+  function idwInterpolate(px, py, stations, power) {
+    var num = 0, den = 0;
+    var p = power || 2;
+    for (var i = 0; i < stations.length; i++) {
+      var s = stations[i];
+      var dx = px - s.cx, dy = py - s.cy;
+      var dist2 = dx*dx + dy*dy;
+      if (dist2 < 1) return s.mm; // exactly on station
+      var w = 1 / Math.pow(dist2, p/2);
+      num += w * s.mm;
+      den += w;
+    }
+    return den === 0 ? 0 : num / den;
+  }
+
+  function drawHeatmap(data) {
+    if (!data || data.length === 0) return;
+
+    resizeCanvas();
+    var W = canvas.width, H = canvas.height;
+    if (W === 0 || H === 0) return;
+
+    // Convert lat/lon to canvas pixel coords
+    var stations = data.map(function(s) {
+      var pt = map.latLngToContainerPoint([s.lat, s.lon]);
+      return { cx: pt.x, cy: pt.y, mm: s.mm };
+    });
+
+    // Downsample grid for performance: every STEP pixels
+    var STEP = 4;
+    var cols = Math.ceil(W / STEP);
+    var rows = Math.ceil(H / STEP);
+
+    var imageData = ctx.createImageData(W, H);
+    var pixels = imageData.data;
+
+    // Influence radius in pixels (adaptive to zoom)
+    var zoom = map.getZoom();
+    var influenceRadius = Math.max(80, 400 - zoom * 25);
+
+    for (var row = 0; row < rows; row++) {
+      for (var col2 = 0; col2 < cols; col2++) {
+        var px = col2 * STEP + STEP/2;
+        var py = row * STEP + STEP/2;
+
+        // Only consider nearby stations (within influence radius)
+        var nearby = [];
+        for (var i = 0; i < stations.length; i++) {
+          var dx = px - stations[i].cx, dy = py - stations[i].cy;
+          var d = Math.sqrt(dx*dx + dy*dy);
+          if (d < influenceRadius) nearby.push(stations[i]);
+        }
+
+        if (nearby.length === 0) continue;
+
+        var mm = idwInterpolate(px, py, nearby, 2);
+        var rgb = mmToRGB(mm);
+
+        // Fill STEP×STEP block
+        for (var brow = 0; brow < STEP; brow++) {
+          for (var bcol = 0; bcol < STEP; bcol++) {
+            var x = col2 * STEP + bcol;
+            var y = row * STEP + brow;
+            if (x >= W || y >= H) continue;
+            var idx = (y * W + x) * 4;
+            pixels[idx]   = rgb.r;
+            pixels[idx+1] = rgb.g;
+            pixels[idx+2] = rgb.b;
+            pixels[idx+3] = Math.round(heatOpacity * 255);
+          }
+        }
+      }
+    }
+
+    ctx.putImageData(imageData, 0, 0);
+  }
+
+  function scheduleRedraw() {
+    if (renderTimer) clearTimeout(renderTimer);
+    renderTimer = setTimeout(function() {
+      drawHeatmap(currentData);
+    }, 80);
+  }
+
+  // Redraw on map move/zoom
+  map.on('moveend zoomend', scheduleRedraw);
+  map.on('move zoom', function() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+  });
+
+  // Opacity slider
+  var slider = document.getElementById('opSlider');
+  var opVal  = document.getElementById('opVal');
+  slider.addEventListener('input', function() {
+    heatOpacity = this.value / 100;
+    opVal.textContent = this.value + '%';
+    scheduleRedraw();
+  });
 
   // ── Dati campione (fallback) ───────────────────────────────────────────────
   var FALLBACK = [
@@ -170,9 +327,8 @@
     {n:"Morbegno",           lat:46.135, lon:9.578,  mm:151, q:247,  p:"SO"},
     {n:"Sondrio",            lat:46.170, lon:9.875,  mm:199, q:307,  p:"SO"},
     {n:"Bormio",             lat:46.468, lon:10.374, mm:137, q:1225, p:"SO"},
-    {n:"Livigno",            lat:46.537, lon:10.137, mm:92,  q:1816, p:"SO"},
-    {n:"Tirano",             lat:46.215, lon:10.170, mm:127, q:441,  p:"SO"},
-    {n:"Lecco",              lat:45.855, lon:9.397,  mm:117, q:215,  p:"LC"},
+    {n:"Livigno",            lat:46.537, lon:10.134, mm:98,  q:1816, p:"SO"},
+    {n:"Tirano",             lat:46.215, lon:10.168, mm:164, q:441,  p:"SO"},
     {n:"Valsassina",         lat:45.976, lon:9.450,  mm:184, q:760,  p:"LC"},
     {n:"Oggiono",            lat:45.787, lon:9.338,  mm:105, q:268,  p:"LC"},
     {n:"Lecco Balisio",      lat:45.918, lon:9.368,  mm:158, q:490,  p:"LC"},
@@ -257,6 +413,8 @@
 
   // ── Render mappa + sidebar ─────────────────────────────────────────────────
   function render(dati, fonte) {
+    currentData = dati;
+
     var sorted = dati.slice().sort(function (a, b) { return b.mm - a.mm; });
     var vals   = dati.map(function (d) { return d.mm; });
     var mx     = Math.max.apply(null, vals);
@@ -290,19 +448,22 @@
         'Ranking: <b>#' + rank + '</b> su ' + dati.length + ' stazioni';
     }
 
-    // Marker sulla mappa
+    // Marker sulla mappa — piccoli cerchi quasi invisibili, il colore è nella heatmap
     dati.forEach(function (s) {
-      var r    = Math.max(7, Math.min(22, 7 + s.mm / 13));
       var c    = col(s.mm);
       var rank = sorted.indexOf(s) + 1;
 
       var m = L.circleMarker([s.lat, s.lon], {
-        radius: r, fillColor: c, color: '#fff', weight: 1.5, fillOpacity: 0.88
+        radius: 5,
+        fillColor: c,
+        color: '#fff',
+        weight: 1.5,
+        fillOpacity: 0.9
       }).addTo(map);
 
       m.bindPopup(
         '<div class="p-nome" style="color:' + c + '">' + s.n + '</div>' +
-        '<div class="p-row"><span class="p-k">Pioggia 30gg</span><span class="p-v">' + s.mm + ' mm</span></div>' +
+        '<div class="p-row"><span class="p-k">Pioggia</span><span class="p-v">' + s.mm + ' mm</span></div>' +
         '<div class="p-row"><span class="p-k">Provincia</span><span class="p-v">' + s.p + '</span></div>' +
         '<div class="p-row"><span class="p-k">Quota</span><span class="p-v">' + s.q + ' m slm</span></div>' +
         '<div class="p-row"><span class="p-k">Ranking</span><span class="p-v">#' + rank + ' / ' + dati.length + '</span></div>'
@@ -336,6 +497,11 @@
     });
 
     document.getElementById('loader').style.display = 'none';
+
+    // Draw heatmap after map is ready
+    setTimeout(function() {
+      drawHeatmap(currentData);
+    }, 200);
   }
 
   // ── Avvio ──────────────────────────────────────────────────────────────────
