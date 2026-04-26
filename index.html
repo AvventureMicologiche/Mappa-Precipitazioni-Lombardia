@@ -85,8 +85,8 @@
     </div>
     <div class="opacity-ctrl">
       <span>Opacità</span>
-      <input type="range" id="opSlider" min="10" max="95" value="60">
-      <span id="opVal">60%</span>
+      <input type="range" id="opSlider" min="10" max="95" value="65">
+      <span id="opVal">65%</span>
     </div>
     <div class="stats">
       <div class="stat"><div class="sv" id="sn">—</div><div class="sl">Stazioni</div></div>
@@ -113,16 +113,66 @@
 (function () {
   'use strict';
 
+  // ── Date ───────────────────────────────────────────────────────────────────
   var now = new Date(), past = new Date();
   past.setDate(now.getDate() - 30);
-
   function fmtDate(d){ return d.toLocaleDateString('it-IT',{day:'2-digit',month:'short',year:'numeric'}); }
   function fmtISO(d){ return d.toISOString().slice(0,10); }
-
   document.getElementById('datehdr').textContent = fmtDate(past)+' – '+fmtDate(now)+' · ARPA Open Data';
 
-  // Scala colori 9 stop
-  var STOPS=[
+  // ── Confine Lombardia [lon, lat] ────────────────────────────────────────────
+  // Poligono reale del confine regionale (semplificato ma accurato)
+  var LOMBARDIA_BORDER = [
+    // Ovest: Lago Maggiore → Piemonte
+    [8.622,45.748],[8.625,45.718],[8.618,45.690],[8.598,45.660],
+    [8.568,45.625],[8.540,45.588],[8.518,45.548],[8.500,45.505],
+    [8.492,45.462],[8.496,45.420],[8.512,45.382],[8.538,45.346],
+    [8.572,45.318],[8.614,45.292],[8.660,45.268],[8.706,45.244],
+    [8.754,45.216],[8.802,45.186],[8.852,45.158],[8.904,45.130],
+    [8.956,45.108],[9.008,45.084],[9.060,45.062],
+    // Sud: da Voghera → Mantova (Po)
+    [9.120,45.032],[9.190,45.004],[9.258,44.980],[9.328,44.964],
+    [9.402,44.952],[9.480,44.944],[9.558,44.940],[9.638,44.946],
+    [9.720,44.964],[9.800,44.984],[9.882,45.006],[9.964,45.028],
+    [10.046,45.050],[10.128,45.072],[10.210,45.098],[10.292,45.126],
+    [10.372,45.148],[10.452,45.162],[10.532,45.172],[10.614,45.180],
+    [10.696,45.190],[10.764,45.200],[10.830,45.212],[10.886,45.232],
+    // Est: confine con Veneto
+    [10.908,45.268],[10.926,45.320],[10.944,45.374],[10.960,45.430],
+    [10.970,45.490],[10.978,45.550],[10.982,45.610],[10.966,45.668],
+    [10.938,45.726],[10.902,45.784],[10.854,45.838],[10.800,45.890],
+    [10.738,45.934],[10.668,45.966],[10.590,45.986],[10.506,45.998],
+    // Nord-Est: Stelvio/Valtellina alta
+    [10.424,46.034],[10.376,46.074],[10.346,46.120],[10.374,46.168],
+    [10.416,46.218],[10.450,46.270],[10.478,46.324],[10.500,46.380],
+    [10.520,46.440],[10.514,46.500],[10.486,46.548],
+    // Nord: cresta alpina confine svizzero (da est verso ovest)
+    [10.420,46.524],[10.336,46.534],[10.252,46.524],[10.170,46.510],
+    [10.086,46.490],[10.002,46.468],[9.920,46.444],[9.838,46.416],
+    [9.758,46.386],[9.678,46.356],[9.598,46.322],[9.518,46.290],
+    [9.440,46.258],[9.362,46.226],[9.286,46.194],[9.212,46.162],
+    [9.142,46.130],[9.082,46.092],[9.034,46.050],[8.990,46.006],
+    [8.952,45.962],[8.912,45.916],[8.864,45.876],[8.810,45.844],
+    [8.752,45.818],[8.694,45.792],[8.636,45.768],[8.622,45.748]
+  ];
+
+  // ── Point-in-polygon (ray casting) ────────────────────────────────────────
+  function pointInPolygon(lon, lat, poly) {
+    var inside = false;
+    var n = poly.length;
+    for (var i = 0, j = n - 1; i < n; j = i++) {
+      var xi = poly[i][0], yi = poly[i][1];
+      var xj = poly[j][0], yj = poly[j][1];
+      if (((yi > lat) !== (yj > lat)) &&
+          (lon < (xj - xi) * (lat - yi) / (yj - yi) + xi)) {
+        inside = !inside;
+      }
+    }
+    return inside;
+  }
+
+  // ── Scala colori ───────────────────────────────────────────────────────────
+  var STOPS = [
     {v:0,  r:208,g:232,b:255},
     {v:20, r:126,g:200,b:248},
     {v:50, r:41, g:182,b:239},
@@ -134,41 +184,48 @@
     {v:350,r:155,g:48, b:255}
   ];
 
-  function mmToRGB(mm){
-    var v=Math.max(0,Math.min(mm,350));
-    for(var i=1;i<STOPS.length;i++){
-      if(v<=STOPS[i].v){
-        var t=(v-STOPS[i-1].v)/(STOPS[i].v-STOPS[i-1].v);
+  function mmToRGB(mm) {
+    var v = Math.max(0, Math.min(mm, 350));
+    for (var i = 1; i < STOPS.length; i++) {
+      if (v <= STOPS[i].v) {
+        var t = (v - STOPS[i-1].v) / (STOPS[i].v - STOPS[i-1].v);
         return [
-          Math.round(STOPS[i-1].r+t*(STOPS[i].r-STOPS[i-1].r)),
-          Math.round(STOPS[i-1].g+t*(STOPS[i].g-STOPS[i-1].g)),
-          Math.round(STOPS[i-1].b+t*(STOPS[i].b-STOPS[i-1].b))
+          Math.round(STOPS[i-1].r + t*(STOPS[i].r - STOPS[i-1].r)),
+          Math.round(STOPS[i-1].g + t*(STOPS[i].g - STOPS[i-1].g)),
+          Math.round(STOPS[i-1].b + t*(STOPS[i].b - STOPS[i-1].b))
         ];
       }
     }
     return [155,48,255];
   }
 
-  function col(mm){ var c=mmToRGB(mm); return 'rgb('+c[0]+','+c[1]+','+c[2]+')'; }
+  function col(mm) { var c = mmToRGB(mm); return 'rgb('+c[0]+','+c[1]+','+c[2]+')'; }
 
-  // Mappa Leaflet
-  var map = L.map('map').setView([45.65,9.85],8);
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{
-    maxZoom:19, subdomains:'abc',
-    attribution:'© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors | Dati: ARPA Lombardia'
+  // ── Mappa Leaflet ──────────────────────────────────────────────────────────
+  var map = L.map('map').setView([45.65, 9.85], 8);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    maxZoom: 19, subdomains: 'abc',
+    attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors | Dati: ARPA Lombardia'
   }).addTo(map);
 
-  // ── Custom Leaflet Canvas Layer per IDW heatmap ────────────────────────────
-  var heatOpacity = 0.60;
-  var currentData = [];
-  var heatCanvas  = null;
-  var heatCtx     = null;
+  // Mostra confine Lombardia sulla mappa
+  var borderLatLngs = LOMBARDIA_BORDER.map(function(c){ return [c[1], c[0]]; });
+  L.polygon(borderLatLngs, {
+    color: '#1b3f6e', weight: 1.5, opacity: 0.6, fill: false, dashArray: '4,4'
+  }).addTo(map);
 
-  // Creiamo il canvas direttamente nel pane overlayPane di Leaflet
+  // ── Canvas IDW con maschera ────────────────────────────────────────────────
+  var heatOpacity  = 0.65;
+  var currentData  = [];
+  var heatCanvas   = null;
+  var heatCtx      = null;
+  var drawTimer    = null;
+
   function initCanvas() {
+    if (heatCanvas) return;
     heatCanvas = document.createElement('canvas');
     heatCanvas.style.position = 'absolute';
-    heatCanvas.style.top = '0';
+    heatCanvas.style.top  = '0';
     heatCanvas.style.left = '0';
     heatCanvas.style.pointerEvents = 'none';
     heatCanvas.style.zIndex = '250';
@@ -176,59 +233,75 @@
     heatCtx = heatCanvas.getContext('2d');
   }
 
-  function resizeAndReposition() {
-    if (!heatCanvas) return;
-    var size   = map.getSize();
-    heatCanvas.width  = size.x;
-    heatCanvas.height = size.y;
-    // Sposta il canvas in modo che corrisponda al viewport corrente
-    var topLeft = map.containerPointToLayerPoint([0,0]);
-    heatCanvas.style.transform = 'translate('+topLeft.x+'px,'+topLeft.y+'px)';
-  }
-
   function drawHeat() {
     if (!heatCanvas || !heatCtx || currentData.length === 0) return;
-    resizeAndReposition();
 
-    var W = heatCanvas.width, H = heatCanvas.height;
+    var size = map.getSize();
+    heatCanvas.width  = size.x;
+    heatCanvas.height = size.y;
+
+    var topLeft = map.containerPointToLayerPoint([0,0]);
+    heatCanvas.style.transform = 'translate('+topLeft.x+'px,'+topLeft.y+'px)';
+
+    var W = size.x, H = size.y;
     heatCtx.clearRect(0, 0, W, H);
 
-    // Converti coordinate geografiche in pixel del canvas
+    // Converti stazioni in coordinate pixel
     var stations = currentData.map(function(s) {
       var pt = map.latLngToContainerPoint(L.latLng(s.lat, s.lon));
-      return { x: pt.x, y: pt.y, mm: s.mm };
+      return { x: pt.x, y: pt.y, mm: s.mm, lat: s.lat, lon: s.lon };
     });
 
+    // Raggio in pixel (più stretto = interpolazione più fedele ai dati)
     var zoom = map.getZoom();
-    var R = Math.max(70, 480 - zoom * 28); // raggio influenza in pixel
+    // A zoom 8 ≈ 120px, a zoom 10 ≈ 200px — si adatta allo zoom
+    var R = Math.max(50, Math.min(200, 15 * Math.pow(2, zoom - 6)));
 
-    var STEP = 3; // precisione griglia (pixel per step)
+    var STEP = 3;
     var imgData = heatCtx.createImageData(W, H);
     var px = imgData.data;
 
     for (var y = 0; y < H; y += STEP) {
       for (var x = 0; x < W; x += STEP) {
-        var num = 0, den = 0, found = false;
 
+        // Converte pixel in lat/lon per test point-in-polygon
+        var latlng = map.containerPointToLatLng([x, y]);
+        var lon = latlng.lng, lat = latlng.lat;
+
+        // MASCHERA: salta pixel fuori dalla Lombardia
+        if (!pointInPolygon(lon, lat, LOMBARDIA_BORDER)) continue;
+
+        // IDW interpolation
+        var num = 0, den = 0, found = false;
         for (var i = 0; i < stations.length; i++) {
           var dx = x - stations[i].x;
           var dy = y - stations[i].y;
           var d2 = dx*dx + dy*dy;
           if (d2 > R*R) continue;
           found = true;
-          if (d2 < 0.5) { num = stations[i].mm * 1e9; den = 1e9; break; }
-          var w = 1.0 / d2; // IDW esponente 2
+          if (d2 < 1) { num = stations[i].mm; den = 1; break; }
+          var w = 1.0 / d2;
           num += w * stations[i].mm;
           den += w;
         }
 
-        if (!found) continue;
+        if (!found) {
+          // Nessuna stazione nel raggio: usa IDW globale (evita buchi)
+          for (var i = 0; i < stations.length; i++) {
+            var dx = x - stations[i].x;
+            var dy = y - stations[i].y;
+            var d2 = dx*dx + dy*dy;
+            var w = 1.0 / d2;
+            num += w * stations[i].mm;
+            den += w;
+          }
+        }
 
+        if (den === 0) continue;
         var mm  = num / den;
         var rgb = mmToRGB(mm);
         var a   = Math.round(heatOpacity * 255);
 
-        // Riempi blocco STEP×STEP
         for (var by = 0; by < STEP; by++) {
           var ry = y + by; if (ry >= H) break;
           for (var bx = 0; bx < STEP; bx++) {
@@ -244,32 +317,26 @@
     }
 
     heatCtx.putImageData(imgData, 0, 0);
+    heatCanvas.style.opacity = '1';
   }
 
-  var drawTimer = null;
   function scheduleDraw(delay) {
     if (drawTimer) clearTimeout(drawTimer);
     drawTimer = setTimeout(drawHeat, delay || 80);
   }
 
-  // Gestione eventi mappa
   map.on('movestart zoomstart', function() {
     if (heatCanvas) heatCanvas.style.opacity = '0';
   });
-  map.on('moveend zoomend', function() {
-    scheduleDraw(80);
-    if (heatCanvas) heatCanvas.style.opacity = '1';
-  });
-  map.on('resize', function() { scheduleDraw(100); });
+  map.on('moveend zoomend', function() { scheduleDraw(100); });
 
-  // Slider opacità
   document.getElementById('opSlider').addEventListener('input', function() {
     heatOpacity = this.value / 100;
     document.getElementById('opVal').textContent = this.value + '%';
     scheduleDraw(60);
   });
 
-  // Dati campione fallback
+  // ── Dati campione ──────────────────────────────────────────────────────────
   var FALLBACK = [
     {n:"Milano Lambrate",    lat:45.484,lon:9.238,  mm:58, q:122,p:"MI"},
     {n:"Milano Brera",       lat:45.472,lon:9.186,  mm:54, q:121,p:"MI"},
@@ -321,65 +388,67 @@
     {n:"Guidizzolo",         lat:45.317,lon:10.582, mm:43, q:64, p:"MN"}
   ];
 
+  // ── ARPA Live ──────────────────────────────────────────────────────────────
   function loadARPA() {
     document.getElementById('loader-sub').textContent = 'Connessione ARPA Lombardia…';
-    var stUrl='https://www.dati.lombardia.it/resource/nf78-nj6b.json'
-      +'?$limit=600&$select=idsensore,nomestazione,lat,lng,quota,provincia'
-      +"&$where=tipologiasensore='Pioggia'";
-    var prUrl='https://www.dati.lombardia.it/resource/pstb-pga6.json'
-      +'?$select=idsensore,sum(valore)%20as%20tot'
-      +'&$where=data>=%27'+fmtISO(past)+'T00:00:00%27'
-      +'&$group=idsensore&$limit=5000';
+    var stUrl = 'https://www.dati.lombardia.it/resource/nf78-nj6b.json'
+      + '?$limit=600&$select=idsensore,nomestazione,lat,lng,quota,provincia'
+      + "&$where=tipologiasensore='Pioggia'";
+    var prUrl = 'https://www.dati.lombardia.it/resource/pstb-pga6.json'
+      + '?$select=idsensore,sum(valore)%20as%20tot'
+      + '&$where=data>=%27'+fmtISO(past)+'T00:00:00%27'
+      + '&$group=idsensore&$limit=5000';
 
-    Promise.all([fetch(stUrl),fetch(prUrl)])
+    Promise.all([fetch(stUrl), fetch(prUrl)])
       .then(function(rs){
-        if(!rs[0].ok||!rs[1].ok) throw new Error('HTTP');
-        return Promise.all([rs[0].json(),rs[1].json()]);
+        if (!rs[0].ok || !rs[1].ok) throw new Error('HTTP');
+        return Promise.all([rs[0].json(), rs[1].json()]);
       })
       .then(function(res){
-        document.getElementById('loader-sub').textContent='Elaborazione…';
-        var stMap={};
+        document.getElementById('loader-sub').textContent = 'Elaborazione…';
+        var stMap = {};
         res[0].forEach(function(s){
-          var lat=parseFloat(s.lat),lon=parseFloat(s.lng);
-          if(!isNaN(lat)&&!isNaN(lon)&&lat>44&&lat<47&&lon>7&&lon<12)
+          var lat=parseFloat(s.lat), lon=parseFloat(s.lng);
+          if (!isNaN(lat)&&!isNaN(lon)&&lat>44&&lat<47&&lon>7&&lon<12)
             stMap[s.idsensore]={n:s.nomestazione||'—',lat:lat,lon:lon,q:s.quota||'—',p:s.provincia||'—'};
         });
         var out=[];
         res[1].forEach(function(pr){
           var mm=parseFloat(pr.tot);
-          if(isNaN(mm)||mm<0) return;
-          var st=stMap[pr.idsensore]; if(!st) return;
+          if (isNaN(mm)||mm<0) return;
+          var st=stMap[pr.idsensore]; if (!st) return;
           out.push({n:st.n,lat:st.lat,lon:st.lon,q:st.q,p:st.p,mm:Math.round(mm*10)/10});
         });
-        if(out.length<10) throw new Error('pochi dati');
-        render(out,'🟢 ARPA live');
+        if (out.length < 10) throw new Error('pochi dati');
+        render(out, '🟢 ARPA live');
       })
       .catch(function(e){
-        console.warn('ARPA fallback:',e.message);
-        render(FALLBACK,'🟡 dati campione');
+        console.warn('Fallback:', e.message);
+        render(FALLBACK, '🟡 dati campione');
       });
   }
 
+  // ── Render ─────────────────────────────────────────────────────────────────
   function render(dati, fonte) {
     currentData = dati;
-    var sorted=dati.slice().sort(function(a,b){return b.mm-a.mm;});
-    var vals=dati.map(function(d){return d.mm;});
-    var mx=Math.max.apply(null,vals), mn=Math.min.apply(null,vals);
-    var av=Math.round(vals.reduce(function(a,b){return a+b;},0)/vals.length);
+    var sorted = dati.slice().sort(function(a,b){ return b.mm-a.mm; });
+    var vals   = dati.map(function(d){ return d.mm; });
+    var mx = Math.max.apply(null,vals), mn = Math.min.apply(null,vals);
+    var av = Math.round(vals.reduce(function(a,b){return a+b;},0)/vals.length);
 
-    document.getElementById('sn').textContent=dati.length;
-    document.getElementById('smx').textContent=Math.round(mx);
-    document.getElementById('sav').textContent=av;
-    document.getElementById('smn').textContent=Math.round(mn);
-    document.getElementById('badge').textContent=dati.length+' stazioni · '+fonte;
+    document.getElementById('sn').textContent  = dati.length;
+    document.getElementById('smx').textContent = Math.round(mx);
+    document.getElementById('sav').textContent = av;
+    document.getElementById('smn').textContent = Math.round(mn);
+    document.getElementById('badge').textContent = dati.length+' stazioni · '+fonte;
 
     var mkrs={}, selNome=null;
 
     function selectSt(s,rank){
-      if(selNome){var pv=document.getElementById('r-'+selNome);if(pv)pv.classList.remove('active');}
+      if (selNome){var pv=document.getElementById('r-'+selNome);if(pv)pv.classList.remove('active');}
       selNome=s.n;
       var row=document.getElementById('r-'+s.n);
-      if(row){row.classList.add('active');row.scrollIntoView({block:'nearest'});}
+      if (row){row.classList.add('active');row.scrollIntoView({block:'nearest'});}
       document.getElementById('infobox').style.display='block';
       var nm=document.getElementById('info-nome');
       nm.textContent=s.n; nm.style.color=col(s.mm);
@@ -391,7 +460,9 @@
 
     dati.forEach(function(s){
       var c=col(s.mm), rank=sorted.indexOf(s)+1;
-      var m=L.circleMarker([s.lat,s.lon],{radius:5,fillColor:c,color:'#fff',weight:1.5,fillOpacity:0.95}).addTo(map);
+      var m=L.circleMarker([s.lat,s.lon],{
+        radius:5, fillColor:c, color:'#fff', weight:1.5, fillOpacity:0.95
+      }).addTo(map);
       m.bindPopup(
         '<div class="p-nome" style="color:'+c+'">'+s.n+'</div>'+
         '<div class="p-row"><span class="p-k">Pioggia</span><span class="p-v">'+s.mm+' mm</span></div>'+
@@ -399,7 +470,7 @@
         '<div class="p-row"><span class="p-k">Quota</span><span class="p-v">'+s.q+' m slm</span></div>'+
         '<div class="p-row"><span class="p-k">Ranking</span><span class="p-v">#'+rank+' / '+dati.length+'</span></div>'
       );
-      m.on('click',(function(s,rank){return function(){selectSt(s,rank);};}(s,rank)));
+      m.on('click',(function(s,r){return function(){selectSt(s,r);};}(s,rank)));
       mkrs[s.n]=m;
     });
 
@@ -419,13 +490,11 @@
 
     document.getElementById('loader').style.display='none';
 
-    // Inizializza canvas e disegna
     initCanvas();
     setTimeout(function(){ drawHeat(); }, 400);
   }
 
   loadARPA();
-
 }());
 </script>
 </body>
