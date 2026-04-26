@@ -60,6 +60,45 @@
   #lsub{font-size:10px;color:#aaa}
   .fonte{font-size:9px;color:#aaa;padding:2px 10px;border-top:1px solid #eee;text-align:center;background:#fff}
   .fonte a{color:#1b3f6e}
+
+  /* ── Pannello selezione tempo ───────────────────────────────────────────── */
+  #time-panel{
+    position:absolute;top:12px;left:12px;z-index:1000;
+    background:rgba(255,255,255,0.95);border-radius:10px;
+    padding:12px 14px;box-shadow:0 2px 12px rgba(0,0,0,.22);
+    width:200px;pointer-events:all;
+  }
+  #time-panel .tp-title{font-size:11px;font-weight:700;color:#1b3f6e;margin-bottom:10px;
+    text-transform:uppercase;letter-spacing:.06em}
+  .tp-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:4px;margin-bottom:4px}
+  .tp-btn{
+    background:#f0f4fb;border:1px solid #d0d8e8;border-radius:5px;
+    font-size:11px;font-weight:600;color:#1b3f6e;
+    padding:5px 2px;text-align:center;cursor:pointer;
+    transition:background .15s,border-color .15s;
+    user-select:none;
+  }
+  .tp-btn:hover{background:#dde8ff;border-color:#a0b8e0}
+  .tp-btn.active{background:#1b3f6e;color:#fff;border-color:#1b3f6e}
+  .tp-label{font-size:10px;color:#1b6e3f;font-weight:600;margin-top:6px;
+    cursor:pointer;text-decoration:underline dotted}
+  /* Date personalizzate */
+  #custom-date-box{display:none;margin-top:8px;border-top:1px solid #eee;padding-top:8px}
+  .cd-row{display:flex;flex-direction:column;gap:3px;margin-bottom:6px}
+  .cd-label{font-size:9px;text-transform:uppercase;color:#aaa;letter-spacing:.05em}
+  .cd-input{
+    border:1px solid #d0d8e8;border-radius:5px;padding:4px 6px;
+    font-size:11px;color:#333;width:100%;
+    font-family:inherit;
+  }
+  .cd-input:focus{outline:none;border-color:#1b3f6e}
+  .cd-apply{
+    width:100%;background:#1b3f6e;color:#fff;border:none;
+    border-radius:5px;padding:6px;font-size:11px;font-weight:700;
+    cursor:pointer;margin-top:2px;
+  }
+  .cd-apply:hover{background:#14305a}
+  #tp-loading{display:none;font-size:10px;color:#888;margin-top:6px;text-align:center}
 </style>
 </head>
 <body>
@@ -77,6 +116,38 @@
 </header>
 <div class="wrap">
   <div id="map">
+    <!-- Pannello selezione periodo -->
+    <div id="time-panel">
+      <div class="tp-title">🕒 Periodo</div>
+      <div class="tp-grid">
+        <div class="tp-btn" data-h="1">1h</div>
+        <div class="tp-btn" data-h="3">3h</div>
+        <div class="tp-btn" data-h="6">6h</div>
+        <div class="tp-btn" data-h="12">12h</div>
+        <div class="tp-btn" data-h="24">24h</div>
+      </div>
+      <div class="tp-grid">
+        <div class="tp-btn" data-d="7">7d</div>
+        <div class="tp-btn" data-d="15">15d</div>
+        <div class="tp-btn" data-d="20">20d</div>
+        <div class="tp-btn active" data-d="30">30d</div>
+        <div class="tp-btn" id="btn-custom">📅</div>
+      </div>
+      <div class="tp-label" id="tp-periodo">Pioggia · Ultimi 30 Giorni</div>
+      <div id="tp-loading">⏳ Caricamento…</div>
+      <div id="custom-date-box">
+        <div class="cd-row">
+          <div class="cd-label">Data inizio</div>
+          <input type="date" class="cd-input" id="cd-from">
+        </div>
+        <div class="cd-row">
+          <div class="cd-label">Data fine</div>
+          <input type="date" class="cd-input" id="cd-to">
+        </div>
+        <button class="cd-apply" id="cd-apply">Applica</button>
+      </div>
+    </div>
+
     <!-- Legenda sovrapposta in basso a sinistra -->
     <div id="legend-panel">
       <div class="sec">mm cumulati (30 giorni)</div>
@@ -114,11 +185,103 @@
 'use strict';
 
 // ── Date ────────────────────────────────────────────────────────────────────
-var now=new Date(), past=new Date();
-past.setDate(now.getDate()-30);
+var now=new Date();
+var past=new Date(); past.setDate(now.getDate()-30);
 function fmtDate(d){return d.toLocaleDateString('it-IT',{day:'2-digit',month:'short',year:'numeric'});}
 function fmtISO(d){return d.toISOString().slice(0,10);}
-document.getElementById('datehdr').textContent=fmtDate(past)+' – '+fmtDate(now)+' · ARPA';
+function fmtISOLocal(d){
+  var y=d.getFullYear(),m=String(d.getMonth()+1).padStart(2,'0'),dd=String(d.getDate()).padStart(2,'0');
+  return y+'-'+m+'-'+dd;
+}
+function updateDateHeader(){
+  document.getElementById('datehdr').textContent=fmtDate(past)+' – '+fmtDate(now)+' · ARPA';
+}
+updateDateHeader();
+
+// ── Selezione periodo ────────────────────────────────────────────────────────
+var activeMarkers=[];
+
+function clearMarkers(){
+  activeMarkers.forEach(function(m){m.remove();});
+  activeMarkers=[];
+}
+
+function setPeriodLabel(txt){
+  document.getElementById('tp-periodo').textContent=txt;
+}
+
+function reloadData(){
+  clearMarkers();
+  gridPoints=[]; gridReady=false;
+  if(cvs) cvs.style.opacity='0';
+  document.getElementById('tp-loading').style.display='block';
+  loadARPA();
+}
+
+function setDays(days,label){
+  now=new Date();
+  past=new Date(); past.setDate(now.getDate()-days);
+  updateDateHeader();
+  setPeriodLabel(label);
+  reloadData();
+}
+
+function setHours(hours,label){
+  now=new Date();
+  past=new Date(); past.setTime(now.getTime()-hours*3600000);
+  updateDateHeader();
+  setPeriodLabel(label);
+  reloadData();
+}
+
+// Bottoni periodo
+document.querySelectorAll('.tp-btn[data-d]').forEach(function(btn){
+  btn.addEventListener('click',function(){
+    document.querySelectorAll('.tp-btn').forEach(function(b){b.classList.remove('active');});
+    this.classList.add('active');
+    document.getElementById('custom-date-box').style.display='none';
+    var days=parseInt(this.dataset.d);
+    var labels={7:'Pioggia · Ultimi 7 Giorni',15:'Pioggia · Ultimi 15 Giorni',
+                20:'Pioggia · Ultimi 20 Giorni',30:'Pioggia · Ultimi 30 Giorni'};
+    setDays(days,labels[days]||('Pioggia · Ultimi '+days+' Giorni'));
+  });
+});
+document.querySelectorAll('.tp-btn[data-h]').forEach(function(btn){
+  btn.addEventListener('click',function(){
+    document.querySelectorAll('.tp-btn').forEach(function(b){b.classList.remove('active');});
+    this.classList.add('active');
+    document.getElementById('custom-date-box').style.display='none';
+    var h=parseInt(this.dataset.h);
+    var labels={1:'Pioggia · Ultima Ora',3:'Pioggia · Ultime 3 Ore',6:'Pioggia · Ultime 6 Ore',
+                12:'Pioggia · Ultime 12 Ore',24:'Pioggia · Ultime 24 Ore'};
+    setHours(h,labels[h]||('Pioggia · Ultime '+h+' Ore'));
+  });
+});
+
+// Pulsante date personalizzate
+document.getElementById('btn-custom').addEventListener('click',function(){
+  document.querySelectorAll('.tp-btn').forEach(function(b){b.classList.remove('active');});
+  this.classList.add('active');
+  var box=document.getElementById('custom-date-box');
+  box.style.display=box.style.display==='none'?'block':'none';
+  // Pre-compila con il periodo corrente
+  document.getElementById('cd-from').value=fmtISOLocal(past);
+  document.getElementById('cd-to').value=fmtISOLocal(now);
+});
+
+document.getElementById('cd-apply').addEventListener('click',function(){
+  var from=document.getElementById('cd-from').value;
+  var to=document.getElementById('cd-to').value;
+  if(!from||!to){alert('Seleziona entrambe le date');return;}
+  if(from>to){alert('La data inizio deve essere prima della data fine');return;}
+  past=new Date(from+'T00:00:00');
+  now=new Date(to+'T23:59:59');
+  updateDateHeader();
+  var df=new Date(from),dt=new Date(to);
+  setPeriodLabel('Pioggia · '+fmtDate(df)+' → '+fmtDate(dt));
+  document.getElementById('custom-date-box').style.display='none';
+  reloadData();
+});
 
 // ── Colori ──────────────────────────────────────────────────────────────────
 var STOPS=[
@@ -422,6 +585,9 @@ function loadARPA(){
     .catch(function(e){
       console.warn('Fallback:',e.message);
       render(FALLBACK,'🟡 dati campione');
+    })
+    .finally(function(){
+      document.getElementById('tp-loading').style.display='none';
     });
 }
 
@@ -490,6 +656,7 @@ function render(dati,fonte){
       weight: 1.5,
       pane: 'markerPane'
     }).addTo(map);
+    activeMarkers.push(m);
 
     // Tooltip al mouseover (come ARPAL)
     m.on('mouseover',function(e){
