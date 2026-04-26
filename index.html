@@ -22,22 +22,20 @@
 
   /* Pannello legenda sovrapposto alla mappa */
   #legend-panel{
-    position:absolute;bottom:28px;left:10px;z-index:1000;
-    background:rgba(255,255,255,0.93);border-radius:8px;
-    padding:8px 12px;box-shadow:0 2px 10px rgba(0,0,0,.18);
-    min-width:220px;pointer-events:all;
+    position:absolute;bottom:32px;left:12px;z-index:1000;
+    background:rgba(255,255,255,0.95);border-radius:10px;
+    padding:12px 16px;box-shadow:0 2px 12px rgba(0,0,0,.22);
+    min-width:300px;pointer-events:all;
   }
-  .sec{font-size:8px;text-transform:uppercase;letter-spacing:.08em;color:#aaa;margin-bottom:5px}
-  .grad{height:9px;border-radius:3px;margin-bottom:3px;background:linear-gradient(to right,
+  .sec{font-size:12px;text-transform:uppercase;letter-spacing:.07em;color:#777;margin-bottom:8px;font-weight:600}
+  .grad{height:16px;border-radius:5px;margin-bottom:5px;background:linear-gradient(to right,
     #d0e8ff 0%,#7ec8f8 12%,#29b6ef 25%,#26c9a0 38%,#8fd44e 50%,
     #f0c040 62%,#f08030 74%,#e02010 86%,#9b30ff 100%)}
-  .grad-l{display:flex;justify-content:space-between;font-size:8px;color:#aaa}
-  .opc{display:flex;align-items:center;gap:6px;margin-top:6px;font-size:9px;color:#777}
-  .opc input{flex:1;accent-color:#1b3f6e}
-  .stats-row{display:flex;gap:8px;margin-top:6px}
-  .stat{background:#f5f7fb;border-radius:4px;padding:4px 8px;flex:1;text-align:center}
-  .sv{font-size:13px;font-weight:700;color:#1b3f6e}
-  .sl{font-size:7px;color:#bbb;text-transform:uppercase}
+  .grad-l{display:flex;justify-content:space-between;font-size:12px;color:#888}
+  .stats-row{display:flex;gap:8px;margin-top:10px}
+  .stat{background:#f0f4fb;border-radius:6px;padding:7px 10px;flex:1;text-align:center}
+  .sv{font-size:20px;font-weight:700;color:#1b3f6e}
+  .sl{font-size:10px;color:#bbb;text-transform:uppercase;margin-top:2px}
 
   /* Tooltip stazione al mouseover — stile ARPAL scuro */
   #st-tooltip{
@@ -84,11 +82,6 @@
       <div class="sec">mm cumulati (30 giorni)</div>
       <div class="grad"></div>
       <div class="grad-l"><span>0</span><span>50</span><span>130</span><span>220</span><span>350+</span></div>
-      <div class="opc">
-        <span>Opacità</span>
-        <input type="range" id="opSlider" min="10" max="95" value="70">
-        <span id="opVal">70%</span>
-      </div>
       <div class="stats-row">
         <div class="stat"><div class="sv" id="sn">–</div><div class="sl">Stazioni</div></div>
         <div class="stat"><div class="sv" id="smx">–</div><div class="sl">Max mm</div></div>
@@ -230,7 +223,7 @@ var cvs=null,ctx=null;
 function initCanvas(){
   if(cvs) return;
   cvs=document.createElement('canvas');
-  cvs.style.cssText='position:absolute;top:0;left:0;pointer-events:none;z-index:250;';
+  cvs.style.cssText='position:absolute;top:0;left:0;pointer-events:none;z-index:200;';
   map.getPanes().overlayPane.appendChild(cvs);
   ctx=cvs.getContext('2d');
 }
@@ -301,12 +294,7 @@ map.on('zoomend',function(){
   drawTimer=setTimeout(drawGrid,100);
 });
 
-document.getElementById('opSlider').addEventListener('input',function(){
-  heatOpacity=this.value/100;
-  document.getElementById('opVal').textContent=this.value+'%';
-  if(drawTimer) clearTimeout(drawTimer);
-  drawTimer=setTimeout(drawGrid,40);
-});
+// opacity fixed at 0.70
 
 // ── GeoJSON Lombardia ───────────────────────────────────────────────────────
 var GEOJSON_URL='https://raw.githubusercontent.com/openpolis/geojson-italy/master/geojson/limits_IT_regions.geojson';
@@ -495,19 +483,18 @@ function render(dati,fonte){
 
     // Cerchio esterno colorato + cerchio interno bianco = look ARPAL
     var m=L.circleMarker([s.lat,s.lon],{
-      radius: 8,
+      radius: 5,
       fillColor: '#ffffff',
-      fillOpacity: 0.85,
-      color: c,
-      weight: 3,
-      className: 'station-marker'
+      fillOpacity: 0.9,
+      color: '#333',
+      weight: 1.5,
+      pane: 'markerPane'
     }).addTo(map);
 
     // Tooltip al mouseover (come ARPAL)
     m.on('mouseover',function(e){
       if(hideTimer) clearTimeout(hideTimer);
-      // Ingrandisce il cerchio
-      this.setStyle({radius:11,weight:4});
+      this.setStyle({radius:8,weight:2,color:'#000'});
       showTooltip(s,rank,e.originalEvent.clientX,e.originalEvent.clientY);
     });
     m.on('mousemove',function(e){
@@ -520,7 +507,7 @@ function render(dati,fonte){
       tooltip.style.top=ty+'px';
     });
     m.on('mouseout',function(){
-      this.setStyle({radius:8,weight:3});
+      this.setStyle({radius:5,weight:1.5,color:'#333'});
       hideTimer=setTimeout(hideTooltip,150);
     });
     // Click: centra la mappa
