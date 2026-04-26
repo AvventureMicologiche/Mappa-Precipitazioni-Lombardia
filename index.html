@@ -22,10 +22,7 @@
 
   /* Pannello legenda sovrapposto alla mappa */
   #legend-panel{
-    position:absolute;bottom:32px;left:12px;z-index:1000;
-    background:rgba(255,255,255,0.95);border-radius:10px;
-    padding:12px 16px;box-shadow:0 2px 12px rgba(0,0,0,.22);
-    min-width:300px;pointer-events:all;
+    border-radius:10px;background:rgba(255,255,255,0.95);box-shadow:0 2px 12px rgba(0,0,0,.22);pointer-events:all;padding:12px 16px;min-width:300px;
   }
   .sec{font-size:12px;text-transform:uppercase;letter-spacing:.07em;color:#777;margin-bottom:8px;font-weight:600}
   .grad{height:16px;border-radius:5px;margin-bottom:5px;background:linear-gradient(to right,
@@ -63,7 +60,7 @@
 
   /* ── Pannello selezione tempo ───────────────────────────────────────────── */
   #time-panel{
-    position:absolute;bottom:220px;left:12px;z-index:1000;
+    border-radius:10px;background:rgba(255,255,255,0.95);box-shadow:0 2px 12px rgba(0,0,0,.22);pointer-events:all;
     background:rgba(255,255,255,0.95);border-radius:10px;
     padding:12px 14px;box-shadow:0 2px 12px rgba(0,0,0,.22);
     width:200px;pointer-events:all;
@@ -101,6 +98,15 @@
   }
   .cd-apply:hover{background:#14305a}
   #tp-loading{display:none;font-size:10px;color:#888;margin-top:6px;text-align:center}
+
+  /* Wrapper pannelli top-left */
+  #panels-wrapper{
+    position:absolute;top:10px;left:10px;z-index:1000;
+    display:flex;flex-direction:column;gap:8px;
+    pointer-events:none;
+    width:280px;
+  }
+  #time-panel,#legend-panel{pointer-events:all;}
 </style>
 </head>
 <body>
@@ -118,6 +124,7 @@
 </header>
 <div class="wrap">
   <div id="map">
+    <div id="panels-wrapper">
     <!-- Pannello selezione periodo -->
     <div id="time-panel">
       <div class="tp-title">🕒 Periodo</div>
@@ -165,6 +172,7 @@
       </div>
     </div>
 
+    </div>
     <!-- Tooltip stazione (appare al mouseover) -->
     <div id="st-tooltip">
       <div class="tt-nome" id="tt-nome"></div>
