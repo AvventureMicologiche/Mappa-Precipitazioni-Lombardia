@@ -101,7 +101,7 @@
 
   /* Wrapper pannelli top-left */
   #panels-wrapper{
-    position:absolute;top:80px;left:10px;z-index:1000;
+    position:absolute;top:155px;left:10px;z-index:1000;
     display:flex;flex-direction:column;gap:8px;
     pointer-events:none;
     width:280px;
@@ -620,9 +620,33 @@ function loadARPA(){
     });
 }
 
+// ── Tooltip globale (non dentro render, così sopravvive ai reload) ────────────
+var tooltip=document.getElementById('st-tooltip');
+var mapEl=document.getElementById('map');
+var hideTimer=null;
+var totalStations=0;
+
+function showTooltip(s,rank,mouseX,mouseY){
+  document.getElementById('tt-nome').textContent=s.n;
+  document.getElementById('tt-mm').textContent=s.mm+' mm';
+  document.getElementById('tt-prov').textContent=s.p;
+  document.getElementById('tt-quota').textContent=s.q+' m slm';
+  document.getElementById('tt-rank').textContent='#'+rank+' / '+totalStations;
+  var mapRect=mapEl.getBoundingClientRect();
+  var tx=mouseX-mapRect.left+16;
+  var ty=mouseY-mapRect.top-60;
+  if(tx+210>mapEl.clientWidth) tx=mouseX-mapRect.left-220;
+  if(ty<0) ty=4;
+  tooltip.style.left=tx+'px';
+  tooltip.style.top=ty+'px';
+  tooltip.style.display='block';
+}
+function hideTooltip(){ tooltip.style.display='none'; }
+
 // ── Render ──────────────────────────────────────────────────────────────────
 function render(dati,fonte){
   currentData=dati;
+  totalStations=dati.length;
   document.getElementById('lsub').textContent='Calcolo griglia IDW…';
 
   var sorted=dati.slice().sort(function(a,b){return b.mm-a.mm;});
@@ -635,63 +659,16 @@ function render(dati,fonte){
   document.getElementById('smn').textContent=Math.round(mn);
   document.getElementById('badge').textContent=dati.length+' stazioni · '+fonte;
 
-  // Pre-calcola griglia IDW (fatto UNA VOLTA — poi il disegno è velocissimo)
-  setTimeout(function(){
-    gridPoints=buildGrid(dati);
-    gridReady=true;
-    document.getElementById('loader').style.display='none';
-    document.getElementById('tp-loading').style.display='none';
-    initCanvas();
-    // Forza pulizia + ridisegno
-    if(heatCtx) heatCtx.clearRect(0,0,cvs.width,cvs.height);
-    if(cvs) cvs.style.opacity='1';
-    drawGrid();
-  },20);
-
-  // Tooltip DOM
-  var tooltip=document.getElementById('st-tooltip');
-  var mapEl=document.getElementById('map');
-  var hideTimer=null;
-
-  function showTooltip(s,rank,mouseX,mouseY){
-    document.getElementById('tt-nome').textContent=s.n;
-    document.getElementById('tt-mm').textContent=s.mm+' mm';
-    document.getElementById('tt-prov').textContent=s.p;
-    document.getElementById('tt-quota').textContent=s.q+' m slm';
-    document.getElementById('tt-rank').textContent='#'+rank+' / '+dati.length;
-    // Posizione: segue il mouse con offset
-    var mapRect=mapEl.getBoundingClientRect();
-    var tx=mouseX-mapRect.left+16;
-    var ty=mouseY-mapRect.top-60;
-    // Evita che esca a destra
-    if(tx+200>mapEl.clientWidth) tx=mouseX-mapRect.left-210;
-    if(ty<0) ty=4;
-    tooltip.style.left=tx+'px';
-    tooltip.style.top=ty+'px';
-    tooltip.style.display='block';
-  }
-
-  function hideTooltip(){
-    tooltip.style.display='none';
-  }
-
-  // Marker stile ARPAL: cerchio bianco vuoto, bordo colorato, più grande
+  // Aggiunge marker SUBITO (non dentro setTimeout) così appaiono mentre calcola la griglia
   dati.forEach(function(s){
     var c=col(s.mm);
     var rank=sorted.indexOf(s)+1;
-
-    // Cerchio esterno colorato + cerchio interno bianco = look ARPAL
     var m=L.circleMarker([s.lat,s.lon],{
-      radius: 5,
-      fillColor: '#ffffff',
-      fillOpacity: 0.9,
-      color: '#333',
-      weight: 1.5,
-      pane: 'markerPane'
+      radius:5, fillColor:'#ffffff', fillOpacity:0.9,
+      color:'#333', weight:1.5, pane:'markerPane'
     }).addTo(map);
     activeMarkers.push(m);
 
-    // Tooltip al mouseover (come ARPAL)
     m.on('mouseover',function(e){
       if(hideTimer) clearTimeout(hideTimer);
       this.setStyle({radius:8,weight:2,color:'#000'});
@@ -701,7 +678,7 @@ function render(dati,fonte){
       var mapRect=mapEl.getBoundingClientRect();
       var tx=e.originalEvent.clientX-mapRect.left+16;
       var ty=e.originalEvent.clientY-mapRect.top-60;
-      if(tx+200>mapEl.clientWidth) tx=e.originalEvent.clientX-mapRect.left-210;
+      if(tx+210>mapEl.clientWidth) tx=e.originalEvent.clientX-mapRect.left-220;
       if(ty<0) ty=4;
       tooltip.style.left=tx+'px';
       tooltip.style.top=ty+'px';
@@ -710,11 +687,20 @@ function render(dati,fonte){
       this.setStyle({radius:5,weight:1.5,color:'#333'});
       hideTimer=setTimeout(hideTooltip,150);
     });
-    // Click: centra la mappa
-    m.on('click',function(){
-      map.setView([s.lat,s.lon],12);
-    });
+    m.on('click',function(){ map.setView([s.lat,s.lon],12); });
   });
+
+  // Pre-calcola griglia IDW in background
+  setTimeout(function(){
+    gridPoints=buildGrid(dati);
+    gridReady=true;
+    document.getElementById('loader').style.display='none';
+    document.getElementById('tp-loading').style.display='none';
+    initCanvas();
+    if(heatCtx){ heatCtx.clearRect(0,0,cvs.width,cvs.height); }
+    cvs.style.opacity='1';
+    drawGrid();
+  },20);
 }
 
 // ── Avvio ────────────────────────────────────────────────────────────────────
