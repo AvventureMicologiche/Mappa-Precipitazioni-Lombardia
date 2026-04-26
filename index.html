@@ -18,41 +18,42 @@
   .hdr-sub{font-size:10px;opacity:.6}
   #badge{font-size:10px;padding:2px 8px;border-radius:12px;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.2)}
   .wrap{display:flex;flex:1;overflow:hidden}
+  #map{flex:1;cursor:crosshair;position:relative}
 
-  /* Sidebar compatta */
-  aside{width:190px;background:#fff;border-right:1px solid #dde;display:flex;flex-direction:column;overflow:hidden;flex-shrink:0}
-  .leg{padding:8px 10px;border-bottom:1px solid #eee}
+  /* Pannello legenda sovrapposto alla mappa */
+  #legend-panel{
+    position:absolute;bottom:28px;left:10px;z-index:1000;
+    background:rgba(255,255,255,0.93);border-radius:8px;
+    padding:8px 12px;box-shadow:0 2px 10px rgba(0,0,0,.18);
+    min-width:220px;pointer-events:all;
+  }
   .sec{font-size:8px;text-transform:uppercase;letter-spacing:.08em;color:#aaa;margin-bottom:5px}
-  .grad{height:8px;border-radius:3px;margin-bottom:3px;background:linear-gradient(to right,
+  .grad{height:9px;border-radius:3px;margin-bottom:3px;background:linear-gradient(to right,
     #d0e8ff 0%,#7ec8f8 12%,#29b6ef 25%,#26c9a0 38%,#8fd44e 50%,
     #f0c040 62%,#f08030 74%,#e02010 86%,#9b30ff 100%)}
-  .grad-l{display:flex;justify-content:space-between;font-size:8px;color:#ccc}
-  .opc{display:flex;align-items:center;gap:5px;padding:5px 10px;border-bottom:1px solid #eee;font-size:9px;color:#777}
+  .grad-l{display:flex;justify-content:space-between;font-size:8px;color:#aaa}
+  .opc{display:flex;align-items:center;gap:6px;margin-top:6px;font-size:9px;color:#777}
   .opc input{flex:1;accent-color:#1b3f6e}
-  .stats{display:grid;grid-template-columns:1fr 1fr;gap:4px;padding:6px 10px;border-bottom:1px solid #eee}
-  .stat{background:#f5f7fb;border-radius:5px;padding:5px 7px}
-  .sv{font-size:14px;font-weight:700;color:#1b3f6e}
-  .sl{font-size:7px;color:#bbb;text-transform:uppercase;margin-top:1px}
-  #infobox{display:none;padding:7px 10px;border-bottom:1px solid #eee;background:#f0f6ff}
-  #info-nome{font-size:11px;font-weight:700;margin-bottom:3px}
-  #info-body{font-size:9px;color:#555;line-height:1.7}
-  .lhdr{font-size:8px;text-transform:uppercase;color:#bbb;padding:5px 10px 2px;border-bottom:1px solid #eee}
-  #stlist{flex:1;overflow-y:auto}
-  #stlist::-webkit-scrollbar{width:2px}
-  #stlist::-webkit-scrollbar-thumb{background:#dde}
-  .srow{display:flex;align-items:center;gap:6px;padding:4px 10px;border-bottom:1px solid #f2f2f2;cursor:pointer}
-  .srow:hover,.srow.active{background:#e8f0ff}
-  .sdot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
-  .sname{flex:1;font-size:9px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#333}
-  .smm{font-size:9px;font-weight:700;color:#1b3f6e;min-width:28px;text-align:right}
+  .stats-row{display:flex;gap:8px;margin-top:6px}
+  .stat{background:#f5f7fb;border-radius:4px;padding:4px 8px;flex:1;text-align:center}
+  .sv{font-size:13px;font-weight:700;color:#1b3f6e}
+  .sl{font-size:7px;color:#bbb;text-transform:uppercase}
 
-  #map{flex:1}
-  .leaflet-popup-content-wrapper{border-radius:7px!important;box-shadow:0 3px 15px rgba(0,0,0,.15)!important}
-  .leaflet-popup-content{margin:9px 12px!important;min-width:140px}
-  .p-nome{font-size:12px;font-weight:700;margin-bottom:5px}
-  .p-row{display:flex;justify-content:space-between;font-size:10px;padding:2px 0;border-bottom:1px solid #f5f5f5}
-  .p-row:last-child{border:none}
-  .p-k{color:#aaa}.p-v{font-weight:600}
+  /* Tooltip stazione al mouseover — stile ARPAL scuro */
+  #st-tooltip{
+    position:absolute;z-index:2000;
+    background:#222;color:#fff;
+    border-radius:6px;padding:10px 14px;
+    box-shadow:0 4px 16px rgba(0,0,0,.35);
+    pointer-events:none;
+    min-width:180px;
+    display:none;
+  }
+  #st-tooltip .tt-nome{font-size:13px;font-weight:700;margin-bottom:6px;border-bottom:1px solid #444;padding-bottom:5px}
+  #st-tooltip .tt-row{display:flex;justify-content:space-between;font-size:11px;padding:2px 0;color:#ccc}
+  #st-tooltip .tt-row b{color:#fff;font-weight:600}
+  #st-tooltip .tt-mm{font-size:20px;font-weight:700;margin:4px 0 2px}
+  #st-tooltip .tt-drop{font-size:18px;margin-right:4px}
 
   #loader{position:fixed;inset:0;background:rgba(255,255,255,.95);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;z-index:9999}
   .spinner{width:36px;height:36px;border:3px solid #eee;border-top-color:#1b3f6e;border-radius:50%;animation:spin .7s linear infinite}
@@ -77,28 +78,38 @@
   <div id="badge">–</div>
 </header>
 <div class="wrap">
-  <aside>
-    <div class="leg">
-      <div class="sec">mm cumulati</div>
+  <div id="map">
+    <!-- Legenda sovrapposta in basso a sinistra -->
+    <div id="legend-panel">
+      <div class="sec">mm cumulati (30 giorni)</div>
       <div class="grad"></div>
-      <div class="grad-l"><span>0</span><span>90</span><span>220</span><span>350+</span></div>
+      <div class="grad-l"><span>0</span><span>50</span><span>130</span><span>220</span><span>350+</span></div>
+      <div class="opc">
+        <span>Opacità</span>
+        <input type="range" id="opSlider" min="10" max="95" value="70">
+        <span id="opVal">70%</span>
+      </div>
+      <div class="stats-row">
+        <div class="stat"><div class="sv" id="sn">–</div><div class="sl">Stazioni</div></div>
+        <div class="stat"><div class="sv" id="smx">–</div><div class="sl">Max mm</div></div>
+        <div class="stat"><div class="sv" id="sav">–</div><div class="sl">Media</div></div>
+        <div class="stat"><div class="sv" id="smn">–</div><div class="sl">Min mm</div></div>
+      </div>
     </div>
-    <div class="opc">
-      <span>Opacità</span>
-      <input type="range" id="opSlider" min="10" max="95" value="70">
-      <span id="opVal">70%</span>
+
+    <!-- Tooltip stazione (appare al mouseover) -->
+    <div id="st-tooltip">
+      <div class="tt-nome" id="tt-nome"></div>
+      <div style="display:flex;align-items:baseline;gap:4px;margin:4px 0">
+        <span style="font-size:16px">💧</span>
+        <span class="tt-mm" id="tt-mm"></span>
+        <span style="font-size:11px;color:#aaa">mm · 30 giorni</span>
+      </div>
+      <div class="tt-row"><span>Provincia</span><b id="tt-prov"></b></div>
+      <div class="tt-row"><span>Quota</span><b id="tt-quota"></b></div>
+      <div class="tt-row"><span>Ranking</span><b id="tt-rank"></b></div>
     </div>
-    <div class="stats">
-      <div class="stat"><div class="sv" id="sn">–</div><div class="sl">Stazioni</div></div>
-      <div class="stat"><div class="sv" id="smx">–</div><div class="sl">Max mm</div></div>
-      <div class="stat"><div class="sv" id="sav">–</div><div class="sl">Media mm</div></div>
-      <div class="stat"><div class="sv" id="smn">–</div><div class="sl">Min mm</div></div>
-    </div>
-    <div id="infobox"><div id="info-nome"></div><div id="info-body"></div></div>
-    <div class="lhdr">Classifica stazioni</div>
-    <div id="stlist"></div>
-  </aside>
-  <div id="map"></div>
+  </div>
 </div>
 <div class="fonte">
   Fonte: <a href="https://www.dati.lombardia.it" target="_blank">Open Data Regione Lombardia</a> · ARPA Lombardia &nbsp;|&nbsp;
@@ -450,43 +461,72 @@ function render(dati,fonte){
     setTimeout(drawGrid,100);
   },20);
 
-  // Marker stazioni
-  var mkrs={},selNome=null;
-  function selectSt(s,rank){
-    if(selNome){var pv=document.getElementById('r-'+selNome);if(pv)pv.classList.remove('active');}
-    selNome=s.n;
-    var row=document.getElementById('r-'+s.n);
-    if(row){row.classList.add('active');row.scrollIntoView({block:'nearest'});}
-    document.getElementById('infobox').style.display='block';
-    var nm=document.getElementById('info-nome');
-    nm.textContent=s.n;nm.style.color=col(s.mm);
-    document.getElementById('info-body').innerHTML=
-      '<b>'+s.mm+' mm</b> cumulati<br>Provincia: <b>'+s.p+'</b> · Quota: <b>'+s.q+' m</b><br>Ranking: <b>#'+rank+'</b>/'+dati.length;
-  }
-  dati.forEach(function(s){
-    var c=col(s.mm),rank=sorted.indexOf(s)+1;
-    var m=L.circleMarker([s.lat,s.lon],{radius:5,fillColor:c,color:'#fff',weight:1.5,fillOpacity:0.95}).addTo(map);
-    m.bindPopup('<div class="p-nome" style="color:'+c+'">'+s.n+'</div>'+
-      '<div class="p-row"><span class="p-k">Pioggia</span><span class="p-v">'+s.mm+' mm</span></div>'+
-      '<div class="p-row"><span class="p-k">Provincia</span><span class="p-v">'+s.p+'</span></div>'+
-      '<div class="p-row"><span class="p-k">Quota</span><span class="p-v">'+s.q+' m</span></div>'+
-      '<div class="p-row"><span class="p-k">Ranking</span><span class="p-v">#'+rank+'/'+dati.length+'</span></div>');
-    m.on('click',(function(s,r){return function(){selectSt(s,r);};}(s,rank)));
-    mkrs[s.n]=m;
-  });
+  // Tooltip DOM
+  var tooltip=document.getElementById('st-tooltip');
+  var mapEl=document.getElementById('map');
+  var hideTimer=null;
 
-  var list=document.getElementById('stlist');
-  sorted.forEach(function(s,i){
-    var d=document.createElement('div');
-    d.className='srow';d.id='r-'+s.n;
-    d.innerHTML='<div class="sdot" style="background:'+col(s.mm)+'"></div>'+
-      '<div class="sname" title="'+s.n+'">'+s.n+'</div>'+
-      '<div class="smm">'+s.mm+'</div>';
-    d.onclick=(function(s,i){return function(){
-      map.flyTo([s.lat,s.lon],12,{duration:0.8});
-      selectSt(s,i+1);mkrs[s.n].openPopup();
-    };}(s,i));
-    list.appendChild(d);
+  function showTooltip(s,rank,mouseX,mouseY){
+    document.getElementById('tt-nome').textContent=s.n;
+    document.getElementById('tt-mm').textContent=s.mm+' mm';
+    document.getElementById('tt-prov').textContent=s.p;
+    document.getElementById('tt-quota').textContent=s.q+' m slm';
+    document.getElementById('tt-rank').textContent='#'+rank+' / '+dati.length;
+    // Posizione: segue il mouse con offset
+    var mapRect=mapEl.getBoundingClientRect();
+    var tx=mouseX-mapRect.left+16;
+    var ty=mouseY-mapRect.top-60;
+    // Evita che esca a destra
+    if(tx+200>mapEl.clientWidth) tx=mouseX-mapRect.left-210;
+    if(ty<0) ty=4;
+    tooltip.style.left=tx+'px';
+    tooltip.style.top=ty+'px';
+    tooltip.style.display='block';
+  }
+
+  function hideTooltip(){
+    tooltip.style.display='none';
+  }
+
+  // Marker stile ARPAL: cerchio bianco vuoto, bordo colorato, più grande
+  dati.forEach(function(s){
+    var c=col(s.mm);
+    var rank=sorted.indexOf(s)+1;
+
+    // Cerchio esterno colorato + cerchio interno bianco = look ARPAL
+    var m=L.circleMarker([s.lat,s.lon],{
+      radius: 8,
+      fillColor: '#ffffff',
+      fillOpacity: 0.85,
+      color: c,
+      weight: 3,
+      className: 'station-marker'
+    }).addTo(map);
+
+    // Tooltip al mouseover (come ARPAL)
+    m.on('mouseover',function(e){
+      if(hideTimer) clearTimeout(hideTimer);
+      // Ingrandisce il cerchio
+      this.setStyle({radius:11,weight:4});
+      showTooltip(s,rank,e.originalEvent.clientX,e.originalEvent.clientY);
+    });
+    m.on('mousemove',function(e){
+      var mapRect=mapEl.getBoundingClientRect();
+      var tx=e.originalEvent.clientX-mapRect.left+16;
+      var ty=e.originalEvent.clientY-mapRect.top-60;
+      if(tx+200>mapEl.clientWidth) tx=e.originalEvent.clientX-mapRect.left-210;
+      if(ty<0) ty=4;
+      tooltip.style.left=tx+'px';
+      tooltip.style.top=ty+'px';
+    });
+    m.on('mouseout',function(){
+      this.setStyle({radius:8,weight:3});
+      hideTimer=setTimeout(hideTooltip,150);
+    });
+    // Click: centra la mappa
+    m.on('click',function(){
+      map.setView([s.lat,s.lon],12);
+    });
   });
 }
 
