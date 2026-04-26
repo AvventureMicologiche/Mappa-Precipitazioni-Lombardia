@@ -63,7 +63,7 @@
 
   /* ── Pannello selezione tempo ───────────────────────────────────────────── */
   #time-panel{
-    position:absolute;top:12px;left:12px;z-index:1000;
+    position:absolute;bottom:220px;left:12px;z-index:1000;
     background:rgba(255,255,255,0.95);border-radius:10px;
     padding:12px 14px;box-shadow:0 2px 12px rgba(0,0,0,.22);
     width:200px;pointer-events:all;
@@ -80,6 +80,8 @@
   }
   .tp-btn:hover{background:#dde8ff;border-color:#a0b8e0}
   .tp-btn.active{background:#1b3f6e;color:#fff;border-color:#1b3f6e}
+  .tp-btn-full{grid-column:1/-1;text-align:center;}
+  .tp-grid-1{display:grid;grid-template-columns:1fr;gap:4px;}
   .tp-label{font-size:10px;color:#1b6e3f;font-weight:600;margin-top:6px;
     cursor:pointer;text-decoration:underline dotted}
   /* Date personalizzate */
@@ -131,7 +133,9 @@
         <div class="tp-btn" data-d="15">15d</div>
         <div class="tp-btn" data-d="20">20d</div>
         <div class="tp-btn active" data-d="30">30d</div>
-        <div class="tp-btn" id="btn-custom">📅</div>
+      </div>
+      <div class="tp-grid-1" style="margin-bottom:4px">
+        <div class="tp-btn tp-btn-full" id="btn-custom">📅 Date personalizzate</div>
       </div>
       <div class="tp-label" id="tp-periodo">Pioggia · Ultimi 30 Giorni</div>
       <div id="tp-loading">⏳ Caricamento…</div>
@@ -150,7 +154,7 @@
 
     <!-- Legenda sovrapposta in basso a sinistra -->
     <div id="legend-panel">
-      <div class="sec">mm cumulati (30 giorni)</div>
+      <div class="sec" id="legend-title">mm cumulati (30 giorni)</div>
       <div class="grad"></div>
       <div class="grad-l"><span>0</span><span>50</span><span>130</span><span>220</span><span>350+</span></div>
       <div class="stats-row">
@@ -167,7 +171,7 @@
       <div style="display:flex;align-items:baseline;gap:4px;margin:4px 0">
         <span style="font-size:16px">💧</span>
         <span class="tt-mm" id="tt-mm"></span>
-        <span style="font-size:11px;color:#aaa">mm · 30 giorni</span>
+        <span style="font-size:11px;color:#aaa" id="tt-periodo">mm · 30 giorni</span>
       </div>
       <div class="tt-row"><span>Provincia</span><b id="tt-prov"></b></div>
       <div class="tt-row"><span>Quota</span><b id="tt-quota"></b></div>
@@ -213,9 +217,20 @@ function setPeriodLabel(txt){
 function reloadData(){
   clearMarkers();
   gridPoints=[]; gridReady=false;
-  if(cvs) cvs.style.opacity='0';
+  // Cancella il canvas visivamente subito
+  if(cvs&&heatCtx){
+    heatCtx.clearRect(0,0,cvs.width,cvs.height);
+    cvs.style.opacity='0';
+  }
   document.getElementById('tp-loading').style.display='block';
   loadARPA();
+}
+
+function updateLegendTitle(txt){
+  var el=document.getElementById('legend-title');
+  if(el) el.textContent=txt;
+  var tt=document.getElementById('tt-periodo');
+  if(tt) tt.textContent='mm · '+txt.toLowerCase().replace('mm cumulati ','');
 }
 
 function setDays(days,label){
@@ -223,6 +238,8 @@ function setDays(days,label){
   past=new Date(); past.setDate(now.getDate()-days);
   updateDateHeader();
   setPeriodLabel(label);
+  var legTxt='mm cumulati ('+days+' giorni)';
+  updateLegendTitle(legTxt);
   reloadData();
 }
 
@@ -231,6 +248,8 @@ function setHours(hours,label){
   past=new Date(); past.setTime(now.getTime()-hours*3600000);
   updateDateHeader();
   setPeriodLabel(label);
+  var legTxt='mm cumulati ('+hours+' ore)';
+  updateLegendTitle(legTxt);
   reloadData();
 }
 
@@ -278,7 +297,9 @@ document.getElementById('cd-apply').addEventListener('click',function(){
   now=new Date(to+'T23:59:59');
   updateDateHeader();
   var df=new Date(from),dt=new Date(to);
-  setPeriodLabel('Pioggia · '+fmtDate(df)+' → '+fmtDate(dt));
+  var rangeLabel='Pioggia · '+fmtDate(df)+' → '+fmtDate(dt);
+  setPeriodLabel(rangeLabel);
+  updateLegendTitle('mm cumulati ('+fmtDate(df)+' → '+fmtDate(dt)+')');
   document.getElementById('custom-date-box').style.display='none';
   reloadData();
 });
@@ -611,8 +632,12 @@ function render(dati,fonte){
     gridPoints=buildGrid(dati);
     gridReady=true;
     document.getElementById('loader').style.display='none';
+    document.getElementById('tp-loading').style.display='none';
     initCanvas();
-    setTimeout(drawGrid,100);
+    // Forza pulizia + ridisegno
+    if(heatCtx) heatCtx.clearRect(0,0,cvs.width,cvs.height);
+    if(cvs) cvs.style.opacity='1';
+    drawGrid();
   },20);
 
   // Tooltip DOM
