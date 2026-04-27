@@ -6,187 +6,216 @@
 <title>Precipitazioni Lombardia</title>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-<!-- Leaflet.heat: heatmap nativa velocissima -->
-<script src="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
 <style>
-  *{margin:0;padding:0;box-sizing:border-box}
-  html,body{height:100%;font-family:'Segoe UI',Arial,sans-serif}
-  body{display:flex;flex-direction:column;background:#111}
-  header{background:#1b3f6e;color:#fff;padding:0 16px;height:46px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;z-index:1000;position:relative}
-  .hdr-l{display:flex;align-items:center;gap:8px}
-  h1{font-size:14px;font-weight:600}
-  .hdr-sub{font-size:10px;opacity:.6}
-  #badge{font-size:10px;padding:2px 8px;border-radius:12px;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.2)}
-  .wrap{display:flex;flex:1;overflow:hidden}
-  #map{flex:1;cursor:crosshair;position:relative}
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{height:100%;font-family:'Segoe UI',Arial,sans-serif}
+body{display:flex;flex-direction:column}
 
-  /* Pannello legenda sovrapposto alla mappa */
-  #legend-panel{
-    border-radius:10px;background:rgba(255,255,255,0.95);box-shadow:0 2px 12px rgba(0,0,0,.22);pointer-events:all;padding:12px 16px;min-width:300px;
-  }
-  .sec{font-size:12px;text-transform:uppercase;letter-spacing:.07em;color:#777;margin-bottom:8px;font-weight:600}
-  .grad{height:16px;border-radius:5px;margin-bottom:5px;background:linear-gradient(to right,
-    #d0e8ff 0%,#7ec8f8 12%,#29b6ef 25%,#26c9a0 38%,#8fd44e 50%,
-    #f0c040 62%,#f08030 74%,#e02010 86%,#9b30ff 100%)}
-  .grad-l{display:flex;justify-content:space-between;font-size:12px;color:#888}
-  .stats-row{display:flex;gap:8px;margin-top:10px}
-  .stat{background:#f0f4fb;border-radius:6px;padding:7px 10px;flex:1;text-align:center}
-  .sv{font-size:20px;font-weight:700;color:#1b3f6e}
-  .sl{font-size:10px;color:#bbb;text-transform:uppercase;margin-top:2px}
+header{
+  background:#1b3f6e;color:#fff;padding:0 16px;height:46px;
+  display:flex;align-items:center;justify-content:space-between;
+  flex-shrink:0;z-index:500;
+}
+.hdr-l{display:flex;align-items:center;gap:8px}
+h1{font-size:14px;font-weight:600}
+.hdr-sub{font-size:10px;opacity:.6}
+#badge{font-size:10px;padding:2px 10px;border-radius:12px;
+  background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.2)}
 
-  /* Tooltip stazione al mouseover — stile ARPAL scuro */
-  #st-tooltip{
-    position:absolute;z-index:2000;
-    background:#222;color:#fff;
-    border-radius:6px;padding:10px 14px;
-    box-shadow:0 4px 16px rgba(0,0,0,.35);
-    pointer-events:none;
-    min-width:180px;
-    display:none;
-  }
-  #st-tooltip .tt-nome{font-size:13px;font-weight:700;margin-bottom:6px;border-bottom:1px solid #444;padding-bottom:5px}
-  #st-tooltip .tt-row{display:flex;justify-content:space-between;font-size:11px;padding:2px 0;color:#ccc}
-  #st-tooltip .tt-row b{color:#fff;font-weight:600}
-  #st-tooltip .tt-mm{font-size:20px;font-weight:700;margin:4px 0 2px}
-  #st-tooltip .tt-drop{font-size:18px;margin-right:4px}
+#map{flex:1;position:relative}
 
-  #loader{position:fixed;inset:0;background:rgba(255,255,255,.95);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;z-index:9999}
-  .spinner{width:36px;height:36px;border:3px solid #eee;border-top-color:#1b3f6e;border-radius:50%;animation:spin .7s linear infinite}
-  @keyframes spin{to{transform:rotate(360deg)}}
-  #lmsg{font-size:12px;color:#666}
-  #lsub{font-size:10px;color:#aaa}
-  .fonte{font-size:9px;color:#aaa;padding:2px 10px;border-top:1px solid #eee;text-align:center;background:#fff}
-  .fonte a{color:#1b3f6e}
+/* ── Pannello periodo (top-left) ── */
+#time-panel{
+  position:absolute;top:155px;left:10px;z-index:1000;
+  background:rgba(255,255,255,.96);border-radius:10px;
+  padding:11px 13px;box-shadow:0 2px 12px rgba(0,0,0,.22);
+  width:195px;pointer-events:all;
+}
+.tp-title{font-size:10px;font-weight:700;color:#1b3f6e;
+  text-transform:uppercase;letter-spacing:.07em;margin-bottom:9px;
+  display:flex;align-items:center;gap:5px}
+.tp-grid5{display:grid;grid-template-columns:repeat(5,1fr);gap:3px;margin-bottom:3px}
+.tp-grid4{display:grid;grid-template-columns:repeat(4,1fr);gap:3px;margin-bottom:3px}
+.tp-btn{
+  background:#f0f4fb;border:1px solid #d0d8e8;border-radius:5px;
+  font-size:11px;font-weight:600;color:#1b3f6e;
+  padding:5px 2px;text-align:center;cursor:pointer;
+  transition:background .12s,border-color .12s;user-select:none;
+}
+.tp-btn:hover{background:#dde8ff;border-color:#90b0d8}
+.tp-btn.active{background:#1b3f6e;color:#fff;border-color:#1b3f6e}
+.tp-custom-btn{
+  width:100%;margin-top:3px;padding:5px;
+  background:#f0f4fb;border:1px solid #d0d8e8;border-radius:5px;
+  font-size:10px;font-weight:600;color:#1b3f6e;cursor:pointer;
+  text-align:center;transition:background .12s;
+}
+.tp-custom-btn:hover{background:#dde8ff}
+.tp-custom-btn.active{background:#1b3f6e;color:#fff;border-color:#1b3f6e}
+#tp-status{font-size:9px;color:#1b6e3f;font-weight:600;margin-top:6px;min-height:13px}
 
-  /* ── Pannello selezione tempo ───────────────────────────────────────────── */
-  #time-panel{
-    border-radius:10px;background:rgba(255,255,255,0.95);box-shadow:0 2px 12px rgba(0,0,0,.22);pointer-events:all;
-    background:rgba(255,255,255,0.95);border-radius:10px;
-    padding:12px 14px;box-shadow:0 2px 12px rgba(0,0,0,.22);
-    width:200px;pointer-events:all;
-  }
-  #time-panel .tp-title{font-size:11px;font-weight:700;color:#1b3f6e;margin-bottom:10px;
-    text-transform:uppercase;letter-spacing:.06em}
-  .tp-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:4px;margin-bottom:4px}
-  .tp-btn{
-    background:#f0f4fb;border:1px solid #d0d8e8;border-radius:5px;
-    font-size:11px;font-weight:600;color:#1b3f6e;
-    padding:5px 2px;text-align:center;cursor:pointer;
-    transition:background .15s,border-color .15s;
-    user-select:none;
-  }
-  .tp-btn:hover{background:#dde8ff;border-color:#a0b8e0}
-  .tp-btn.active{background:#1b3f6e;color:#fff;border-color:#1b3f6e}
-  .tp-btn-full{grid-column:1/-1;text-align:center;}
-  .tp-grid-1{display:grid;grid-template-columns:1fr;gap:4px;}
-  .tp-label{font-size:10px;color:#1b6e3f;font-weight:600;margin-top:6px;
-    cursor:pointer;text-decoration:underline dotted}
-  /* Date personalizzate */
-  #custom-date-box{display:none;margin-top:8px;border-top:1px solid #eee;padding-top:8px}
-  .cd-row{display:flex;flex-direction:column;gap:3px;margin-bottom:6px}
-  .cd-label{font-size:9px;text-transform:uppercase;color:#aaa;letter-spacing:.05em}
-  .cd-input{
-    border:1px solid #d0d8e8;border-radius:5px;padding:4px 6px;
-    font-size:11px;color:#333;width:100%;
-    font-family:inherit;
-  }
-  .cd-input:focus{outline:none;border-color:#1b3f6e}
-  .cd-apply{
-    width:100%;background:#1b3f6e;color:#fff;border:none;
-    border-radius:5px;padding:6px;font-size:11px;font-weight:700;
-    cursor:pointer;margin-top:2px;
-  }
-  .cd-apply:hover{background:#14305a}
-  #tp-loading{display:none;font-size:10px;color:#888;margin-top:6px;text-align:center}
+/* Date personalizzate */
+#custom-box{
+  display:none;margin-top:8px;padding-top:8px;
+  border-top:1px solid #eee;
+}
+.cd-lbl{font-size:8px;text-transform:uppercase;color:#aaa;letter-spacing:.05em;margin-bottom:2px}
+.cd-inp{
+  width:100%;border:1px solid #d0d8e8;border-radius:5px;
+  padding:4px 6px;font-size:11px;color:#333;font-family:inherit;
+  margin-bottom:5px;
+}
+.cd-inp:focus{outline:none;border-color:#1b3f6e}
+.cd-go{
+  width:100%;background:#1b3f6e;color:#fff;border:none;
+  border-radius:5px;padding:6px;font-size:11px;font-weight:700;cursor:pointer;
+}
+.cd-go:hover{background:#14305a}
 
-  /* Wrapper pannelli top-left */
-  #panels-wrapper{
-    position:absolute;top:155px;left:10px;z-index:1000;
-    display:flex;flex-direction:column;gap:8px;
-    pointer-events:none;
-    width:280px;
-  }
-  #time-panel,#legend-panel{pointer-events:all;}
+/* Spinner dentro il pannello */
+#tp-spinner{
+  display:none;align-items:center;gap:6px;margin-top:6px;
+  font-size:10px;color:#888;
+}
+.mini-spin{
+  width:12px;height:12px;border:2px solid #dde;
+  border-top-color:#1b3f6e;border-radius:50%;
+  animation:spin .6s linear infinite;flex-shrink:0;
+}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* ── Pannello legenda (sotto time-panel) ── */
+#legend-panel{
+  position:absolute;top:155px;left:10px;z-index:1000;
+  background:rgba(255,255,255,.96);border-radius:10px;
+  padding:11px 14px;box-shadow:0 2px 12px rgba(0,0,0,.22);
+  width:195px;pointer-events:all;
+  display:none; /* nascosto finché non c'è heatmap */
+}
+.leg-title{font-size:10px;font-weight:700;color:#777;
+  text-transform:uppercase;letter-spacing:.07em;margin-bottom:7px}
+.grad{height:13px;border-radius:4px;margin-bottom:4px;
+  background:linear-gradient(to right,
+    #d0e8ff 0%,#7ec8f8 12%,#29b6ef 25%,#26c9a0 38%,
+    #8fd44e 50%,#f0c040 62%,#f08030 74%,#e02010 86%,#9b30ff 100%)}
+.grad-l{display:flex;justify-content:space-between;font-size:9px;color:#aaa;margin-bottom:8px}
+.stats-row{display:grid;grid-template-columns:repeat(4,1fr);gap:4px}
+.stat{background:#f0f4fb;border-radius:5px;padding:5px 4px;text-align:center}
+.sv{font-size:16px;font-weight:700;color:#1b3f6e;line-height:1}
+.sl{font-size:7px;color:#bbb;text-transform:uppercase;margin-top:2px}
+
+/* ── Tooltip stazione ── */
+#st-tooltip{
+  position:absolute;z-index:2000;
+  background:#1e1e1e;color:#fff;
+  border-radius:7px;padding:10px 14px;
+  box-shadow:0 4px 18px rgba(0,0,0,.4);
+  pointer-events:none;min-width:185px;display:none;
+}
+.tt-nome{font-size:13px;font-weight:700;
+  border-bottom:1px solid #3a3a3a;padding-bottom:5px;margin-bottom:6px}
+.tt-big{display:flex;align-items:baseline;gap:5px;margin-bottom:4px}
+.tt-mm{font-size:22px;font-weight:700;color:#7ec8f8}
+.tt-unit{font-size:11px;color:#888}
+.tt-row{display:flex;justify-content:space-between;
+  font-size:10px;padding:2px 0;color:#aaa}
+.tt-row b{color:#ddd;font-weight:600}
+
+/* Loader iniziale */
+#loader{
+  position:fixed;inset:0;background:rgba(255,255,255,.96);
+  display:flex;flex-direction:column;align-items:center;
+  justify-content:center;gap:10px;z-index:9999;
+}
+.spinner{width:36px;height:36px;border:3px solid #eee;
+  border-top-color:#1b3f6e;border-radius:50%;animation:spin .7s linear infinite}
+#lmsg{font-size:12px;color:#666}
+#lsub{font-size:10px;color:#aaa}
+
+.fonte{
+  font-size:9px;color:#aaa;padding:2px 10px;
+  border-top:1px solid #eee;text-align:center;background:#fff;
+}
+.fonte a{color:#1b3f6e}
 </style>
 </head>
 <body>
+
 <div id="loader">
   <div class="spinner"></div>
-  <div id="lmsg">Caricamento…</div>
+  <div id="lmsg">Caricamento mappa…</div>
   <div id="lsub"></div>
 </div>
+
 <header>
   <div class="hdr-l">
     <span style="font-size:18px">🌧</span>
-    <div><h1>Precipitazioni Lombardia</h1><div class="hdr-sub" id="datehdr"></div></div>
+    <div>
+      <h1>Precipitazioni Lombardia</h1>
+      <div class="hdr-sub" id="datehdr">Seleziona un periodo per visualizzare i dati</div>
+    </div>
   </div>
   <div id="badge">–</div>
 </header>
-<div class="wrap">
-  <div id="map">
-    <div id="panels-wrapper">
-    <!-- Pannello selezione periodo -->
-    <div id="time-panel">
-      <div class="tp-title">🕒 Periodo</div>
-      <div class="tp-grid">
-        <div class="tp-btn" data-h="1">1h</div>
-        <div class="tp-btn" data-h="3">3h</div>
-        <div class="tp-btn" data-h="6">6h</div>
-        <div class="tp-btn" data-h="12">12h</div>
-        <div class="tp-btn" data-h="24">24h</div>
-      </div>
-      <div class="tp-grid">
-        <div class="tp-btn" data-d="7">7d</div>
-        <div class="tp-btn" data-d="15">15d</div>
-        <div class="tp-btn" data-d="20">20d</div>
-        <div class="tp-btn active" data-d="30">30d</div>
-      </div>
-      <div class="tp-grid-1" style="margin-bottom:4px">
-        <div class="tp-btn tp-btn-full" id="btn-custom">📅 Date personalizzate</div>
-      </div>
-      <div class="tp-label" id="tp-periodo">Pioggia · Ultimi 30 Giorni</div>
-      <div id="tp-loading">⏳ Caricamento…</div>
-      <div id="custom-date-box">
-        <div class="cd-row">
-          <div class="cd-label">Data inizio</div>
-          <input type="date" class="cd-input" id="cd-from">
-        </div>
-        <div class="cd-row">
-          <div class="cd-label">Data fine</div>
-          <input type="date" class="cd-input" id="cd-to">
-        </div>
-        <button class="cd-apply" id="cd-apply">Applica</button>
-      </div>
-    </div>
 
-    <!-- Legenda sovrapposta in basso a sinistra -->
-    <div id="legend-panel">
-      <div class="sec" id="legend-title">mm cumulati (30 giorni)</div>
-      <div class="grad"></div>
-      <div class="grad-l"><span>0</span><span>50</span><span>130</span><span>220</span><span>350+</span></div>
-      <div class="stats-row">
-        <div class="stat"><div class="sv" id="sn">–</div><div class="sl">Stazioni</div></div>
-        <div class="stat"><div class="sv" id="smx">–</div><div class="sl">Max mm</div></div>
-        <div class="stat"><div class="sv" id="sav">–</div><div class="sl">Media</div></div>
-        <div class="stat"><div class="sv" id="smn">–</div><div class="sl">Min mm</div></div>
-      </div>
-    </div>
+<div id="map">
 
+  <!-- Pannello periodo -->
+  <div id="time-panel">
+    <div class="tp-title">🕒 Periodo</div>
+    <div class="tp-grid5">
+      <div class="tp-btn" data-type="h" data-val="1">1h</div>
+      <div class="tp-btn" data-type="h" data-val="3">3h</div>
+      <div class="tp-btn" data-type="h" data-val="6">6h</div>
+      <div class="tp-btn" data-type="h" data-val="12">12h</div>
+      <div class="tp-btn" data-type="h" data-val="24">24h</div>
     </div>
-    <!-- Tooltip stazione (appare al mouseover) -->
-    <div id="st-tooltip">
-      <div class="tt-nome" id="tt-nome"></div>
-      <div style="display:flex;align-items:baseline;gap:4px;margin:4px 0">
-        <span style="font-size:16px">💧</span>
-        <span class="tt-mm" id="tt-mm"></span>
-        <span style="font-size:11px;color:#aaa" id="tt-periodo">mm · 30 giorni</span>
-      </div>
-      <div class="tt-row"><span>Provincia</span><b id="tt-prov"></b></div>
-      <div class="tt-row"><span>Quota</span><b id="tt-quota"></b></div>
-      <div class="tt-row"><span>Ranking</span><b id="tt-rank"></b></div>
+    <div class="tp-grid4">
+      <div class="tp-btn" data-type="d" data-val="7">7d</div>
+      <div class="tp-btn" data-type="d" data-val="15">15d</div>
+      <div class="tp-btn" data-type="d" data-val="20">20d</div>
+      <div class="tp-btn" data-type="d" data-val="30">30d</div>
+    </div>
+    <div class="tp-custom-btn" id="btn-custom">📅 Date personalizzate</div>
+    <div id="custom-box">
+      <div class="cd-lbl">Data inizio</div>
+      <input type="date" class="cd-inp" id="cd-from">
+      <div class="cd-lbl">Data fine</div>
+      <input type="date" class="cd-inp" id="cd-to">
+      <button class="cd-go" id="cd-apply">Applica</button>
+    </div>
+    <div id="tp-status"></div>
+    <div id="tp-spinner"><div class="mini-spin"></div><span>Caricamento…</span></div>
+  </div>
+
+  <!-- Pannello legenda (appare solo con heatmap) -->
+  <div id="legend-panel">
+    <div class="leg-title" id="leg-title">mm cumulati (30 giorni)</div>
+    <div class="grad"></div>
+    <div class="grad-l"><span>0</span><span>50</span><span>130</span><span>220</span><span>350+</span></div>
+    <div class="stats-row">
+      <div class="stat"><div class="sv" id="sn">–</div><div class="sl">Staz.</div></div>
+      <div class="stat"><div class="sv" id="smx">–</div><div class="sl">Max</div></div>
+      <div class="stat"><div class="sv" id="sav">–</div><div class="sl">Media</div></div>
+      <div class="stat"><div class="sv" id="smn">–</div><div class="sl">Min</div></div>
     </div>
   </div>
+
+  <!-- Tooltip stazione -->
+  <div id="st-tooltip">
+    <div class="tt-nome" id="tt-nome"></div>
+    <div class="tt-big">
+      <span>💧</span>
+      <span class="tt-mm" id="tt-mm"></span>
+      <span class="tt-unit" id="tt-unit">mm</span>
+    </div>
+    <div class="tt-row"><span>Provincia</span><b id="tt-prov"></b></div>
+    <div class="tt-row"><span>Quota</span><b id="tt-quota"></b></div>
+    <div class="tt-row"><span>Ranking</span><b id="tt-rank"></b></div>
+  </div>
+
 </div>
+
 <div class="fonte">
   Fonte: <a href="https://www.dati.lombardia.it" target="_blank">Open Data Regione Lombardia</a> · ARPA Lombardia &nbsp;|&nbsp;
   © <a href="https://www.openstreetmap.org/copyright" target="_blank">OpenStreetMap</a>
@@ -196,123 +225,14 @@
 (function(){
 'use strict';
 
-// ── Date ────────────────────────────────────────────────────────────────────
-var now=new Date();
-var past=new Date(); past.setDate(now.getDate()-30);
-function fmtDate(d){return d.toLocaleDateString('it-IT',{day:'2-digit',month:'short',year:'numeric'});}
-function fmtISO(d){return d.toISOString().slice(0,10);}
-function fmtISOLocal(d){
-  var y=d.getFullYear(),m=String(d.getMonth()+1).padStart(2,'0'),dd=String(d.getDate()).padStart(2,'0');
-  return y+'-'+m+'-'+dd;
-}
-function updateDateHeader(){
-  document.getElementById('datehdr').textContent=fmtDate(past)+' – '+fmtDate(now)+' · ARPA';
-}
-updateDateHeader();
+// ── Mappa Leaflet ─────────────────────────────────────────────────────────────
+var map = L.map('map').setView([45.65,9.85],8);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{
+  maxZoom:18, subdomains:'abc',
+  attribution:'© OpenStreetMap | ARPA Lombardia'
+}).addTo(map);
 
-// ── Selezione periodo ────────────────────────────────────────────────────────
-var activeMarkers=[];
-
-function clearMarkers(){
-  activeMarkers.forEach(function(m){m.remove();});
-  activeMarkers=[];
-}
-
-function setPeriodLabel(txt){
-  document.getElementById('tp-periodo').textContent=txt;
-}
-
-function reloadData(){
-  clearMarkers();
-  gridPoints=[]; gridReady=false;
-  // Cancella il canvas visivamente subito
-  if(cvs&&heatCtx){
-    heatCtx.clearRect(0,0,cvs.width,cvs.height);
-    cvs.style.opacity='0';
-  }
-  document.getElementById('tp-loading').style.display='block';
-  loadARPA();
-}
-
-function updateLegendTitle(txt){
-  var el=document.getElementById('legend-title');
-  if(el) el.textContent=txt;
-  var tt=document.getElementById('tt-periodo');
-  if(tt) tt.textContent='mm · '+txt.toLowerCase().replace('mm cumulati ','');
-}
-
-function setDays(days,label){
-  now=new Date();
-  past=new Date(); past.setDate(now.getDate()-days);
-  updateDateHeader();
-  setPeriodLabel(label);
-  var legTxt='mm cumulati ('+days+' giorni)';
-  updateLegendTitle(legTxt);
-  reloadData();
-}
-
-function setHours(hours,label){
-  now=new Date();
-  past=new Date(); past.setTime(now.getTime()-hours*3600000);
-  updateDateHeader();
-  setPeriodLabel(label);
-  var legTxt='mm cumulati ('+hours+' ore)';
-  updateLegendTitle(legTxt);
-  reloadData();
-}
-
-// Bottoni periodo
-document.querySelectorAll('.tp-btn[data-d]').forEach(function(btn){
-  btn.addEventListener('click',function(){
-    document.querySelectorAll('.tp-btn').forEach(function(b){b.classList.remove('active');});
-    this.classList.add('active');
-    document.getElementById('custom-date-box').style.display='none';
-    var days=parseInt(this.dataset.d);
-    var labels={7:'Pioggia · Ultimi 7 Giorni',15:'Pioggia · Ultimi 15 Giorni',
-                20:'Pioggia · Ultimi 20 Giorni',30:'Pioggia · Ultimi 30 Giorni'};
-    setDays(days,labels[days]||('Pioggia · Ultimi '+days+' Giorni'));
-  });
-});
-document.querySelectorAll('.tp-btn[data-h]').forEach(function(btn){
-  btn.addEventListener('click',function(){
-    document.querySelectorAll('.tp-btn').forEach(function(b){b.classList.remove('active');});
-    this.classList.add('active');
-    document.getElementById('custom-date-box').style.display='none';
-    var h=parseInt(this.dataset.h);
-    var labels={1:'Pioggia · Ultima Ora',3:'Pioggia · Ultime 3 Ore',6:'Pioggia · Ultime 6 Ore',
-                12:'Pioggia · Ultime 12 Ore',24:'Pioggia · Ultime 24 Ore'};
-    setHours(h,labels[h]||('Pioggia · Ultime '+h+' Ore'));
-  });
-});
-
-// Pulsante date personalizzate
-document.getElementById('btn-custom').addEventListener('click',function(){
-  document.querySelectorAll('.tp-btn').forEach(function(b){b.classList.remove('active');});
-  this.classList.add('active');
-  var box=document.getElementById('custom-date-box');
-  box.style.display=box.style.display==='none'?'block':'none';
-  // Pre-compila con il periodo corrente
-  document.getElementById('cd-from').value=fmtISOLocal(past);
-  document.getElementById('cd-to').value=fmtISOLocal(now);
-});
-
-document.getElementById('cd-apply').addEventListener('click',function(){
-  var from=document.getElementById('cd-from').value;
-  var to=document.getElementById('cd-to').value;
-  if(!from||!to){alert('Seleziona entrambe le date');return;}
-  if(from>to){alert('La data inizio deve essere prima della data fine');return;}
-  past=new Date(from+'T00:00:00');
-  now=new Date(to+'T23:59:59');
-  updateDateHeader();
-  var df=new Date(from),dt=new Date(to);
-  var rangeLabel='Pioggia · '+fmtDate(df)+' → '+fmtDate(dt);
-  setPeriodLabel(rangeLabel);
-  updateLegendTitle('mm cumulati ('+fmtDate(df)+' → '+fmtDate(dt)+')');
-  document.getElementById('custom-date-box').style.display='none';
-  reloadData();
-});
-
-// ── Colori ──────────────────────────────────────────────────────────────────
+// ── Colori ────────────────────────────────────────────────────────────────────
 var STOPS=[
   {v:0,  r:208,g:232,b:255},{v:20, r:126,g:200,b:248},
   {v:50, r:41, g:182,b:239},{v:90, r:38, g:201,b:160},
@@ -320,43 +240,54 @@ var STOPS=[
   {v:220,r:240,g:128,b:48},{v:280,r:224,g:32, b:16},
   {v:350,r:155,g:48, b:255}
 ];
-var MAX_MM=350;
 function mmToRGB(mm){
-  var v=Math.max(0,Math.min(mm,MAX_MM));
+  var v=Math.max(0,Math.min(mm,350));
   for(var i=1;i<STOPS.length;i++){
     if(v<=STOPS[i].v){
       var t=(v-STOPS[i-1].v)/(STOPS[i].v-STOPS[i-1].v);
-      return[Math.round(STOPS[i-1].r+t*(STOPS[i].r-STOPS[i-1].r)),
-             Math.round(STOPS[i-1].g+t*(STOPS[i].g-STOPS[i-1].g)),
-             Math.round(STOPS[i-1].b+t*(STOPS[i].b-STOPS[i-1].b))];
+      return[
+        Math.round(STOPS[i-1].r+t*(STOPS[i].r-STOPS[i-1].r)),
+        Math.round(STOPS[i-1].g+t*(STOPS[i].g-STOPS[i-1].g)),
+        Math.round(STOPS[i-1].b+t*(STOPS[i].b-STOPS[i-1].b))
+      ];
     }
   }
   return[155,48,255];
 }
 function col(mm){var c=mmToRGB(mm);return'rgb('+c[0]+','+c[1]+','+c[2]+')';}
 
-// ── Mappa ───────────────────────────────────────────────────────────────────
-var map=L.map('map').setView([45.65,9.85],8);
-L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{
-  maxZoom:18,subdomains:'abc',
-  attribution:'© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> | ARPA Lombardia'
-}).addTo(map);
+// ── Stato globale ─────────────────────────────────────────────────────────────
+var lombardiaRings = [];
+var activeMarkers  = [];
+var gridPoints     = [];
+var heatOpacity    = 0.70;
+var cvs=null, heatCtx=null, drawTimer=null;
+var totalStations  = 0;
+var currentPast    = null;   // date del periodo corrente
+var currentNow     = null;
+var isLoading      = false;
 
-// ── Stato ───────────────────────────────────────────────────────────────────
-var currentData=[];
-var lombardiaRings=[];   // array di poligoni geo [lon,lat]
-var heatOpacity=0.70;
+// ── Canvas heatmap ────────────────────────────────────────────────────────────
+function initCanvas(){
+  if(cvs) return;
+  cvs = document.createElement('canvas');
+  cvs.style.cssText='position:absolute;top:0;left:0;pointer-events:none;z-index:200;';
+  map.getPanes().overlayPane.appendChild(cvs);
+  heatCtx = cvs.getContext('2d');
+}
 
-// ── Canvas IDW (approccio a griglia geografica pre-calcolata) ────────────────
-// La chiave della velocità: calcoliamo l'IDW su una griglia geo FISSA
-// poi disegniamo quella griglia sul canvas. Al pan/zoom non ricalcoliamo
-// l'IDW (costosissimo) ma solo riproiettiamo i punti griglia (velocissimo).
+function clearHeatmap(){
+  if(cvs && heatCtx){
+    heatCtx.clearRect(0,0,cvs.width,cvs.height);
+    cvs.style.opacity='0';
+  }
+  gridPoints=[];
+}
 
-var GRID_RES = 0.018; // ~2km tra i punti griglia — buona qualità
-var gridPoints = [];  // [{lat,lon,mm}] pre-calcolati
-var gridReady  = false;
+var GRID_RES=0.018;
+var IDW_RAD=0.35;
 
-// Ray-casting geografico (solo per pre-calcolo griglia, non per ogni frame)
+// Geo pip
 function pipGeo(lon,lat,ring){
   var inside=false,n=ring.length;
   for(var i=0,j=n-1;i<n;j=i++){
@@ -377,81 +308,55 @@ function inLombardia(lon,lat){
   return false;
 }
 
-// IDW geografico su griglia fissa — fatto UNA SOLA VOLTA quando arrivano i dati
-// Raggio: ~35km (0.35 gradi circa). Simile ad ARPAL.
-var IDW_RADIUS_DEG = 0.35;
-var IDW_POWER = 2;
-
 function buildGrid(data){
-  // Bounding box Lombardia
   var LON_MIN=8.45,LON_MAX=11.15,LAT_MIN=44.65,LAT_MAX=46.65;
   var pts=[];
   for(var lat=LAT_MIN;lat<=LAT_MAX;lat+=GRID_RES){
     for(var lon=LON_MIN;lon<=LON_MAX;lon+=GRID_RES){
       if(!inLombardia(lon,lat)) continue;
-      // IDW
       var num=0,den=0,found=false;
       for(var i=0;i<data.length;i++){
-        var dlat=lat-data[i].lat, dlon=lon-data[i].lon;
-        // Correzione aspetto longitudine
-        var dlonC=dlon*Math.cos(lat*Math.PI/180);
-        var d2=dlat*dlat+dlonC*dlonC;
-        if(d2>IDW_RADIUS_DEG*IDW_RADIUS_DEG) continue;
+        var dlat=lat-data[i].lat;
+        var dlon=(lon-data[i].lon)*Math.cos(lat*Math.PI/180);
+        var d2=dlat*dlat+dlon*dlon;
+        if(d2>IDW_RAD*IDW_RAD) continue;
         found=true;
         if(d2<0.000001){num=data[i].mm;den=1;break;}
-        var w=1/Math.pow(d2,IDW_POWER/2);
+        var w=1/d2;
         num+=w*data[i].mm; den+=w;
       }
-      if(!found) continue; // nessuna stazione vicina → buco (come ARPAL)
+      if(!found) continue;
       pts.push({lat:lat,lon:lon,mm:num/den});
     }
   }
   return pts;
 }
 
-// ── Canvas overlay ──────────────────────────────────────────────────────────
-var cvs=null,ctx=null;
-
-function initCanvas(){
-  if(cvs) return;
-  cvs=document.createElement('canvas');
-  cvs.style.cssText='position:absolute;top:0;left:0;pointer-events:none;z-index:200;';
-  map.getPanes().overlayPane.appendChild(cvs);
-  ctx=cvs.getContext('2d');
-}
-
-// Dimensione quadrato per punto griglia in pixel (dipende da zoom e GRID_RES)
 function gridPxSize(){
-  // A zoom 8, 1 grado ≈ 78px → GRID_RES gradi ≈ GRID_RES*78 px
-  var metersPerPx=156543.03392*Math.cos(45.6*Math.PI/180)/Math.pow(2,map.getZoom());
-  var gridMeters=GRID_RES*111000;
-  return Math.ceil(gridMeters/metersPerPx)+1;
+  var mpp=156543.03392*Math.cos(45.6*Math.PI/180)/Math.pow(2,map.getZoom());
+  return Math.ceil(GRID_RES*111000/mpp)+1;
 }
-
-var drawTimer=null;
 
 function drawGrid(){
-  if(!cvs||!ctx||gridPoints.length===0) return;
+  if(!cvs||!heatCtx||gridPoints.length===0) return;
   var size=map.getSize();
   cvs.width=size.x; cvs.height=size.y;
   var tl=map.containerPointToLayerPoint([0,0]);
   cvs.style.transform='translate('+tl.x+'px,'+tl.y+'px)';
-  ctx.clearRect(0,0,size.x,size.y);
+  heatCtx.clearRect(0,0,size.x,size.y);
 
   var sq=gridPxSize();
   var a=Math.round(heatOpacity*255);
   var half=sq/2;
-
-  // Usa ImageData per massima velocità
-  var imgData=ctx.createImageData(size.x,size.y);
+  var imgData=heatCtx.createImageData(size.x,size.y);
   var px=imgData.data;
   var W=size.x,H=size.y;
 
   for(var i=0;i<gridPoints.length;i++){
     var g=gridPoints[i];
     var pt=map.latLngToContainerPoint(L.latLng(g.lat,g.lon));
-    var x0=Math.round(pt.x-half), y0=Math.round(pt.y-half);
-    var x1=x0+sq, y1=y0+sq;
+    var x0=Math.round(pt.x-half),y0=Math.round(pt.y-half);
+    var x1=x0+sq,y1=y0+sq;
     if(x1<0||y1<0||x0>=W||y0>=H) continue;
     var rgb=mmToRGB(g.mm);
     var r=rgb[0],g2=rgb[1],b=rgb[2];
@@ -459,74 +364,142 @@ function drawGrid(){
     var ya=Math.max(0,y0),yb=Math.min(H,y1);
     for(var y=ya;y<yb;y++){
       var row=y*W*4+xa*4;
-      for(var x=xa;x<xb;x++){
-        px[row]=r; px[row+1]=g2; px[row+2]=b; px[row+3]=a;
-        row+=4;
-      }
+      for(var x=xa;x<xb;x++){px[row]=r;px[row+1]=g2;px[row+2]=b;px[row+3]=a;row+=4;}
     }
   }
-  ctx.putImageData(imgData,0,0);
+  heatCtx.putImageData(imgData,0,0);
   cvs.style.opacity='1';
 }
 
-// Durante pan: muovi canvas con transform CSS (istantaneo, nessun ridisegno)
+// Ridisegna al pan/zoom — solo se c'è una griglia
 map.on('move',function(){
-  if(!cvs) return;
+  if(!cvs||gridPoints.length===0) return;
   var tl=map.containerPointToLayerPoint([0,0]);
   cvs.style.transform='translate('+tl.x+'px,'+tl.y+'px)';
 });
-map.on('movestart',function(){ if(cvs) cvs.style.opacity='0.5'; });
+map.on('movestart',function(){if(cvs&&gridPoints.length>0) cvs.style.opacity='0.5';});
 map.on('moveend',function(){
+  if(gridPoints.length===0) return;
   if(drawTimer) clearTimeout(drawTimer);
   drawTimer=setTimeout(drawGrid,80);
 });
-map.on('zoomstart',function(){ if(cvs) cvs.style.opacity='0'; });
+map.on('zoomstart',function(){if(cvs) cvs.style.opacity='0';});
 map.on('zoomend',function(){
+  if(gridPoints.length===0) return;
   if(drawTimer) clearTimeout(drawTimer);
   drawTimer=setTimeout(drawGrid,100);
 });
 
-// opacity fixed at 0.70
+// ── Tooltip ───────────────────────────────────────────────────────────────────
+var tooltip=document.getElementById('st-tooltip');
+var mapEl=document.getElementById('map');
+var hideTimer=null;
 
-// ── GeoJSON Lombardia ───────────────────────────────────────────────────────
-var GEOJSON_URL='https://raw.githubusercontent.com/openpolis/geojson-italy/master/geojson/limits_IT_regions.geojson';
+function posTooltip(mx,my){
+  var r=mapEl.getBoundingClientRect();
+  var tx=mx-r.left+16, ty=my-r.top-60;
+  if(tx+210>mapEl.clientWidth) tx=mx-r.left-215;
+  if(ty<0) ty=4;
+  tooltip.style.left=tx+'px';
+  tooltip.style.top=ty+'px';
+}
+function showTooltip(s,rank,mx,my){
+  document.getElementById('tt-nome').textContent=s.n;
+  document.getElementById('tt-mm').textContent=s.mm;
+  document.getElementById('tt-prov').textContent=s.p;
+  document.getElementById('tt-quota').textContent=s.q+' m slm';
+  document.getElementById('tt-rank').textContent='#'+rank+' / '+totalStations;
+  posTooltip(mx,my);
+  tooltip.style.display='block';
+}
+function hideTooltip(){ tooltip.style.display='none'; }
 
-// Fallback confine Lombardia (preciso, derivato da dati ISTAT)
-var FALLBACK_RING=[[8.590,45.878],[8.602,45.922],[8.622,45.962],[8.650,45.998],[8.684,46.030],[8.722,46.058],[8.762,46.082],[8.804,46.102],[8.848,46.118],[8.892,46.130],[8.938,46.138],[8.984,46.142],[9.030,46.142],[9.076,46.138],[9.122,46.130],[9.166,46.118],[9.210,46.102],[9.252,46.082],[9.292,46.060],[9.330,46.034],[9.366,46.006],[9.400,45.976],[9.432,45.944],[9.462,45.910],[9.490,45.874],[9.516,45.836],[9.540,45.798],[9.562,45.758],[9.582,45.716],[9.600,45.674],[9.616,45.632],[9.630,45.588],[9.642,45.544],[9.652,45.500],[9.660,45.454],[9.666,45.408],[9.670,45.362],[9.672,45.314],[9.672,45.268],
-[9.714,45.240],[9.780,45.210],[9.870,45.188],[9.970,45.174],[10.070,45.168],[10.170,45.168],[10.270,45.172],[10.370,45.180],[10.460,45.190],[10.544,45.202],[10.622,45.218],[10.692,45.238],[10.754,45.262],[10.808,45.290],[10.852,45.322],[10.886,45.358],[10.908,45.396],[10.920,45.438],[10.922,45.480],[10.914,45.522],[10.896,45.564],[10.870,45.604],[10.836,45.642],[10.796,45.678],[10.750,45.712],[10.698,45.744],[10.642,45.772],[10.582,45.798],[10.520,45.820],[10.456,45.840],[10.390,45.856],[10.322,45.870],[10.254,45.880],[10.186,45.888],[10.118,45.892],[10.050,45.894],[9.982,45.892],
-[9.936,45.900],[9.892,45.914],[9.852,45.932],[9.816,45.954],[9.784,45.980],[9.756,46.008],[9.732,46.040],[9.712,46.074],[9.698,46.110],[9.688,46.148],[9.684,46.188],[9.684,46.226],[9.690,46.266],[9.700,46.304],[9.716,46.340],[9.736,46.374],[9.762,46.404],[9.792,46.432],[9.826,46.456],[9.862,46.476],[9.900,46.492],[9.940,46.504],[9.982,46.512],[10.024,46.516],[10.066,46.516],[10.108,46.512],[10.148,46.504],[10.188,46.492],[10.226,46.476],[10.262,46.456],[10.296,46.434],[10.328,46.408],[10.356,46.380],[10.382,46.350],[10.404,46.318],[10.424,46.284],[10.440,46.248],[10.452,46.212],[10.460,46.174],[10.464,46.136],[10.466,46.096],[10.462,46.058],[10.456,46.020],[10.446,45.982],[10.432,45.946],[10.414,45.912],[10.392,45.880],[10.368,45.850],
-[10.494,45.800],[10.554,45.758],[10.610,45.712],[10.660,45.664],[10.704,45.612],[10.742,45.558],[10.772,45.500],[10.794,45.440],[10.808,45.378],[10.812,45.316],[10.808,45.254],[10.796,45.194],[10.774,45.136],[10.744,45.082],[10.706,45.034],[10.660,44.992],[10.608,44.958],[10.550,44.930],[10.490,44.910],[10.426,44.896],[10.360,44.888],[10.294,44.886],[10.228,44.888],[10.162,44.896],[10.096,44.908],[10.030,44.924],[9.964,44.944],[9.898,44.966],[9.832,44.990],[9.766,45.016],[9.700,45.042],[9.634,45.068],[9.568,45.094],[9.502,45.118],[9.436,45.140],[9.370,45.160],[9.304,45.178],[9.238,45.192],[9.172,45.204],[9.106,45.212],[9.040,45.218],[8.974,45.220],[8.908,45.220],[8.842,45.216],[8.776,45.210],[8.710,45.200],
-[8.662,45.178],[8.622,45.152],[8.590,45.122],[8.568,45.090],[8.554,45.056],[8.548,45.020],[8.550,44.984],[8.560,44.948],[8.578,44.914],[8.602,44.882],[8.632,44.854],[8.668,44.830],[8.708,44.810],[8.752,44.796],[8.798,44.786],[8.846,44.780],[8.896,44.780],[8.946,44.784],[8.996,44.792],[9.046,44.804],[9.096,44.818],[9.146,44.836],[9.196,44.856],[9.246,44.878],[9.296,44.902],[9.346,44.926],[9.396,44.952],[9.446,44.978],[9.460,45.020],[9.466,45.064],[9.464,45.108],[9.454,45.150],[9.436,45.190],[9.410,45.228],[9.376,45.262],[9.334,45.292],[9.284,45.318],[9.228,45.340],[9.166,45.358],[9.098,45.372],[9.026,45.382],[8.950,45.388],[8.870,45.390],[8.790,45.388],[8.710,45.382],
-[8.660,45.368],[8.614,45.350],[8.572,45.330],[8.534,45.306],[8.502,45.280],[8.476,45.252],[8.456,45.222],[8.444,45.190],[8.440,45.158],[8.444,45.126],[8.456,45.094],[8.476,45.062],[8.504,45.032],[8.530,45.050],[8.546,45.082],[8.554,45.116],[8.554,45.150],[8.548,45.184],[8.536,45.218],[8.520,45.252],[8.502,45.284],[8.490,45.318],[8.484,45.352],[8.486,45.386],[8.494,45.420],[8.508,45.454],[8.528,45.488],[8.550,45.520],[8.566,45.554],[8.576,45.590],[8.580,45.626],[8.578,45.662],[8.572,45.698],[8.564,45.734],[8.560,45.770],[8.562,45.806],[8.572,45.840],[8.590,45.878]];
-
-function loadGeoJSON(cb){
-  document.getElementById('lsub').textContent='Caricamento confine regionale…';
-  fetch(GEOJSON_URL)
-    .then(function(r){if(!r.ok)throw new Error('HTTP '+r.status);return r.json();})
-    .then(function(data){
-      var feat=null;
-      data.features.forEach(function(f){
-        var n=(f.properties.reg_name||f.properties.NOME_REG||'').toLowerCase();
-        if(n.indexOf('lombar')>=0) feat=f;
-      });
-      if(!feat) throw new Error('not found');
-      lombardiaRings=[];
-      var geom=feat.geometry;
-      var polys=geom.type==='MultiPolygon'?geom.coordinates:[geom.coordinates];
-      polys.forEach(function(p){lombardiaRings.push(p);});
-      L.geoJSON(feat,{style:{color:'#1b3f6e',weight:1.5,opacity:0.55,fill:false}}).addTo(map);
-      cb();
-    })
-    .catch(function(e){
-      console.warn('GeoJSON fallback:',e.message);
-      lombardiaRings=[[FALLBACK_RING]];
-      var lls=FALLBACK_RING.map(function(c){return[c[1],c[0]];});
-      L.polygon(lls,{color:'#1b3f6e',weight:1.5,opacity:0.55,fill:false}).addTo(map);
-      cb();
-    });
+// ── Marker ────────────────────────────────────────────────────────────────────
+function clearMarkers(){
+  activeMarkers.forEach(function(m){m.remove();});
+  activeMarkers=[];
 }
 
-// ── Dati campione ───────────────────────────────────────────────────────────
+function addMarkers(dati,sorted){
+  dati.forEach(function(s){
+    var rank=sorted.indexOf(s)+1;
+    var m=L.circleMarker([s.lat,s.lon],{
+      radius:5, fillColor:'#fff', fillOpacity:0.9,
+      color:'#333', weight:1.5, pane:'markerPane'
+    }).addTo(map);
+    activeMarkers.push(m);
+
+    m.on('mouseover',function(e){
+      if(hideTimer) clearTimeout(hideTimer);
+      this.setStyle({radius:8,weight:2,color:'#000'});
+      showTooltip(s,rank,e.originalEvent.clientX,e.originalEvent.clientY);
+    });
+    m.on('mousemove',function(e){ posTooltip(e.originalEvent.clientX,e.originalEvent.clientY); });
+    m.on('mouseout',function(){
+      this.setStyle({radius:5,weight:1.5,color:'#333'});
+      hideTimer=setTimeout(hideTooltip,150);
+    });
+    m.on('click',function(){ map.setView([s.lat,s.lon],12); });
+  });
+}
+
+// ── Render dati ───────────────────────────────────────────────────────────────
+function render(dati,fonte,labelPeriodo){
+  totalStations=dati.length;
+  var sorted=dati.slice().sort(function(a,b){return b.mm-a.mm;});
+  var vals=dati.map(function(d){return d.mm;});
+  var mx=Math.max.apply(null,vals),mn=Math.min.apply(null,vals);
+  var av=Math.round(vals.reduce(function(a,b){return a+b;},0)/vals.length);
+
+  // Aggiorna stats
+  document.getElementById('sn').textContent=dati.length;
+  document.getElementById('smx').textContent=Math.round(mx);
+  document.getElementById('sav').textContent=av;
+  document.getElementById('smn').textContent=Math.round(mn);
+  document.getElementById('badge').textContent=dati.length+' stazioni · '+fonte;
+  document.getElementById('leg-title').textContent='mm cumulati ('+labelPeriodo+')';
+
+  // Mostra legenda
+  document.getElementById('legend-panel').style.display='block';
+  // Posiziona legenda sotto time-panel
+  positionLegend();
+
+  // Aggiungi marker
+  addMarkers(dati,sorted);
+
+  // Calcola heatmap in background
+  document.getElementById('tp-status').textContent='⏳ Calcolo mappa…';
+  setTimeout(function(){
+    initCanvas();
+    clearHeatmap();
+    gridPoints=buildGrid(dati);
+    drawGrid();
+    document.getElementById('tp-status').textContent='✅ '+labelPeriodo;
+    setLoading(false);
+  },20);
+}
+
+function positionLegend(){
+  var tp=document.getElementById('time-panel');
+  var tpBottom=tp.getBoundingClientRect().bottom;
+  var mapTop=mapEl.getBoundingClientRect().top;
+  var offset=tpBottom-mapTop+10;
+  document.getElementById('legend-panel').style.top=offset+'px';
+}
+
+// ── UI loading state ──────────────────────────────────────────────────────────
+function setLoading(on){
+  isLoading=on;
+  document.getElementById('tp-spinner').style.display=on?'flex':'none';
+}
+
+// ── Caricamento dati ARPA ─────────────────────────────────────────────────────
+function fmtISO(d){return d.toISOString().slice(0,10);}
+function fmtDate(d){return d.toLocaleDateString('it-IT',{day:'2-digit',month:'short',year:'numeric'});}
+function fmtISOLocal(d){
+  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+}
+
 var FALLBACK=[
   {n:"Milano Lambrate",lat:45.484,lon:9.238,mm:58,q:122,p:"MI"},
   {n:"Milano Brera",lat:45.472,lon:9.186,mm:54,q:121,p:"MI"},
@@ -578,23 +551,36 @@ var FALLBACK=[
   {n:"Guidizzolo",lat:45.317,lon:10.582,mm:43,q:64,p:"MN"}
 ];
 
-// ── ARPA live ────────────────────────────────────────────────────────────────
-function loadARPA(){
-  document.getElementById('lsub').textContent='Connessione ARPA Lombardia…';
+function loadData(pastDate,nowDate,labelPeriodo){
+  if(isLoading) return;
+  isLoading=true;
+  currentPast=pastDate; currentNow=nowDate;
+
+  // Pulizia immediata
+  clearMarkers();
+  clearHeatmap();
+  document.getElementById('legend-panel').style.display='none';
+  document.getElementById('tp-status').textContent='';
+  setLoading(true);
+
+  // Aggiorna header
+  document.getElementById('datehdr').textContent=
+    fmtDate(pastDate)+' – '+fmtDate(nowDate)+' · ARPA';
+
   var stUrl='https://www.dati.lombardia.it/resource/nf78-nj6b.json'
     +'?$limit=600&$select=idsensore,nomestazione,lat,lng,quota,provincia'
     +"&$where=tipologiasensore='Pioggia'";
   var prUrl='https://www.dati.lombardia.it/resource/pstb-pga6.json'
     +'?$select=idsensore,sum(valore)%20as%20tot'
-    +'&$where=data>=%27'+fmtISO(past)+'T00:00:00%27'
+    +'&$where=data>=%27'+fmtISO(pastDate)+'T00:00:00%27'
     +'&$group=idsensore&$limit=5000';
+
   Promise.all([fetch(stUrl),fetch(prUrl)])
     .then(function(rs){
       if(!rs[0].ok||!rs[1].ok) throw new Error('HTTP');
       return Promise.all([rs[0].json(),rs[1].json()]);
     })
     .then(function(res){
-      document.getElementById('lsub').textContent='Calcolo interpolazione…';
       var stMap={};
       res[0].forEach(function(s){
         var lat=parseFloat(s.lat),lon=parseFloat(s.lng);
@@ -608,103 +594,110 @@ function loadARPA(){
         var st=stMap[pr.idsensore]; if(!st) return;
         out.push({n:st.n,lat:st.lat,lon:st.lon,q:st.q,p:st.p,mm:Math.round(mm*10)/10});
       });
-      if(out.length<10) throw new Error('pochi dati');
-      render(out,'🟢 ARPA live');
+      if(out.length<5) throw new Error('dati insufficienti');
+      render(out,'🟢 ARPA live',labelPeriodo);
     })
     .catch(function(e){
       console.warn('Fallback:',e.message);
-      render(FALLBACK,'🟡 dati campione');
-    })
-    .finally(function(){
-      document.getElementById('tp-loading').style.display='none';
+      render(FALLBACK,'🟡 campione',labelPeriodo);
     });
 }
 
-// ── Tooltip globale (non dentro render, così sopravvive ai reload) ────────────
-var tooltip=document.getElementById('st-tooltip');
-var mapEl=document.getElementById('map');
-var hideTimer=null;
-var totalStations=0;
-
-function showTooltip(s,rank,mouseX,mouseY){
-  document.getElementById('tt-nome').textContent=s.n;
-  document.getElementById('tt-mm').textContent=s.mm+' mm';
-  document.getElementById('tt-prov').textContent=s.p;
-  document.getElementById('tt-quota').textContent=s.q+' m slm';
-  document.getElementById('tt-rank').textContent='#'+rank+' / '+totalStations;
-  var mapRect=mapEl.getBoundingClientRect();
-  var tx=mouseX-mapRect.left+16;
-  var ty=mouseY-mapRect.top-60;
-  if(tx+210>mapEl.clientWidth) tx=mouseX-mapRect.left-220;
-  if(ty<0) ty=4;
-  tooltip.style.left=tx+'px';
-  tooltip.style.top=ty+'px';
-  tooltip.style.display='block';
-}
-function hideTooltip(){ tooltip.style.display='none'; }
-
-// ── Render ──────────────────────────────────────────────────────────────────
-function render(dati,fonte){
-  currentData=dati;
-  totalStations=dati.length;
-  document.getElementById('lsub').textContent='Calcolo griglia IDW…';
-
-  var sorted=dati.slice().sort(function(a,b){return b.mm-a.mm;});
-  var vals=dati.map(function(d){return d.mm;});
-  var mx=Math.max.apply(null,vals),mn=Math.min.apply(null,vals);
-  var av=Math.round(vals.reduce(function(a,b){return a+b;},0)/vals.length);
-  document.getElementById('sn').textContent=dati.length;
-  document.getElementById('smx').textContent=Math.round(mx);
-  document.getElementById('sav').textContent=av;
-  document.getElementById('smn').textContent=Math.round(mn);
-  document.getElementById('badge').textContent=dati.length+' stazioni · '+fonte;
-
-  // Aggiunge marker SUBITO (non dentro setTimeout) così appaiono mentre calcola la griglia
-  dati.forEach(function(s){
-    var c=col(s.mm);
-    var rank=sorted.indexOf(s)+1;
-    var m=L.circleMarker([s.lat,s.lon],{
-      radius:5, fillColor:'#ffffff', fillOpacity:0.9,
-      color:'#333', weight:1.5, pane:'markerPane'
-    }).addTo(map);
-    activeMarkers.push(m);
-
-    m.on('mouseover',function(e){
-      if(hideTimer) clearTimeout(hideTimer);
-      this.setStyle({radius:8,weight:2,color:'#000'});
-      showTooltip(s,rank,e.originalEvent.clientX,e.originalEvent.clientY);
-    });
-    m.on('mousemove',function(e){
-      var mapRect=mapEl.getBoundingClientRect();
-      var tx=e.originalEvent.clientX-mapRect.left+16;
-      var ty=e.originalEvent.clientY-mapRect.top-60;
-      if(tx+210>mapEl.clientWidth) tx=e.originalEvent.clientX-mapRect.left-220;
-      if(ty<0) ty=4;
-      tooltip.style.left=tx+'px';
-      tooltip.style.top=ty+'px';
-    });
-    m.on('mouseout',function(){
-      this.setStyle({radius:5,weight:1.5,color:'#333'});
-      hideTimer=setTimeout(hideTooltip,150);
-    });
-    m.on('click',function(){ map.setView([s.lat,s.lon],12); });
+// ── Pulsanti periodo ──────────────────────────────────────────────────────────
+function setActiveBtn(el){
+  document.querySelectorAll('.tp-btn,.tp-custom-btn').forEach(function(b){
+    b.classList.remove('active');
   });
-
-  // Pre-calcola griglia IDW in background
-  setTimeout(function(){
-    gridPoints=buildGrid(dati);
-    gridReady=true;
-    document.getElementById('loader').style.display='none';
-    document.getElementById('tp-loading').style.display='none';
-    initCanvas();
-    if(heatCtx){ heatCtx.clearRect(0,0,cvs.width,cvs.height); }
-    cvs.style.opacity='1';
-    drawGrid();
-  },20);
+  el.classList.add('active');
 }
 
-// ── Avvio ────────────────────────────────────────────────────────────────────
-loadGeoJSON(function(){loadARPA();});
+document.querySelectorAll('.tp-btn').forEach(function(btn){
+  btn.addEventListener('click',function(){
+    if(isLoading) return;
+    setActiveBtn(this);
+    document.getElementById('custom-box').style.display='none';
+    var now=new Date(), past=new Date();
+    var type=this.dataset.type, val=parseInt(this.dataset.val);
+    var label='';
+    if(type==='h'){
+      past=new Date(now.getTime()-val*3600000);
+      var hLabels={1:'Ultima ora',3:'Ultime 3 ore',6:'Ultime 6 ore',12:'Ultime 12 ore',24:'Ultime 24 ore'};
+      label=hLabels[val]||('Ultime '+val+' ore');
+    } else {
+      past.setDate(now.getDate()-val);
+      var dLabels={7:'7 giorni',15:'15 giorni',20:'20 giorni',30:'30 giorni'};
+      label=dLabels[val]||val+' giorni';
+    }
+    loadData(past,now,label);
+  });
+});
+
+// Pulsante date personalizzate
+document.getElementById('btn-custom').addEventListener('click',function(){
+  var box=document.getElementById('custom-box');
+  var isOpen=box.style.display==='block';
+  box.style.display=isOpen?'none':'block';
+  if(!isOpen){
+    var now=new Date(), past=new Date();
+    past.setDate(now.getDate()-30);
+    document.getElementById('cd-from').value=fmtISOLocal(past);
+    document.getElementById('cd-to').value=fmtISOLocal(now);
+  }
+  this.classList.toggle('active',!isOpen);
+  // Riposiziona legenda se visibile
+  setTimeout(positionLegend,50);
+});
+
+document.getElementById('cd-apply').addEventListener('click',function(){
+  if(isLoading) return;
+  var from=document.getElementById('cd-from').value;
+  var to=document.getElementById('cd-to').value;
+  if(!from||!to){alert('Seleziona entrambe le date');return;}
+  if(from>to){alert('La data inizio deve essere prima della data fine');return;}
+  document.getElementById('custom-box').style.display='none';
+  var pastDate=new Date(from+'T00:00:00');
+  var nowDate=new Date(to+'T23:59:59');
+  var label=fmtDate(pastDate)+' → '+fmtDate(nowDate);
+  setActiveBtn(document.getElementById('btn-custom'));
+  loadData(pastDate,nowDate,label);
+});
+
+// ── GeoJSON confine Lombardia ─────────────────────────────────────────────────
+var GEOJSON_URL='https://raw.githubusercontent.com/openpolis/geojson-italy/master/geojson/limits_IT_regions.geojson';
+var FALLBACK_RING=[[8.590,45.878],[8.602,45.922],[8.622,45.962],[8.650,45.998],[8.684,46.030],[8.722,46.058],[8.762,46.082],[8.804,46.102],[8.848,46.118],[8.892,46.130],[8.938,46.138],[8.984,46.142],[9.030,46.142],[9.076,46.138],[9.122,46.130],[9.166,46.118],[9.210,46.102],[9.252,46.082],[9.292,46.060],[9.330,46.034],[9.366,46.006],[9.400,45.976],[9.432,45.944],[9.462,45.910],[9.490,45.874],[9.516,45.836],[9.540,45.798],[9.562,45.758],[9.582,45.716],[9.600,45.674],[9.616,45.632],[9.630,45.588],[9.642,45.544],[9.652,45.500],[9.660,45.454],[9.666,45.408],[9.670,45.362],[9.672,45.314],[9.672,45.268],[9.714,45.240],[9.780,45.210],[9.870,45.188],[9.970,45.174],[10.070,45.168],[10.170,45.168],[10.270,45.172],[10.370,45.180],[10.460,45.190],[10.544,45.202],[10.622,45.218],[10.692,45.238],[10.754,45.262],[10.808,45.290],[10.852,45.322],[10.886,45.358],[10.908,45.396],[10.920,45.438],[10.922,45.480],[10.914,45.522],[10.896,45.564],[10.870,45.604],[10.836,45.642],[10.796,45.678],[10.750,45.712],[10.698,45.744],[10.642,45.772],[10.582,45.798],[10.520,45.820],[10.456,45.840],[10.390,45.856],[10.322,45.870],[10.254,45.880],[10.186,45.888],[10.118,45.892],[10.050,45.894],[9.982,45.892],[9.936,45.900],[9.892,45.914],[9.852,45.932],[9.816,45.954],[9.784,45.980],[9.756,46.008],[9.732,46.040],[9.712,46.074],[9.698,46.110],[9.688,46.148],[9.684,46.188],[9.684,46.226],[9.690,46.266],[9.700,46.304],[9.716,46.340],[9.736,46.374],[9.762,46.404],[9.792,46.432],[9.826,46.456],[9.862,46.476],[9.900,46.492],[9.940,46.504],[9.982,46.512],[10.024,46.516],[10.066,46.516],[10.108,46.512],[10.148,46.504],[10.188,46.492],[10.226,46.476],[10.262,46.456],[10.296,46.434],[10.328,46.408],[10.356,46.380],[10.382,46.350],[10.404,46.318],[10.424,46.284],[10.440,46.248],[10.452,46.212],[10.460,46.174],[10.464,46.136],[10.466,46.096],[10.462,46.058],[10.456,46.020],[10.446,45.982],[10.432,45.946],[10.414,45.912],[10.392,45.880],[10.368,45.850],[10.494,45.800],[10.554,45.758],[10.610,45.712],[10.660,45.664],[10.704,45.612],[10.742,45.558],[10.772,45.500],[10.794,45.440],[10.808,45.378],[10.812,45.316],[10.808,45.254],[10.796,45.194],[10.774,45.136],[10.744,45.082],[10.706,45.034],[10.660,44.992],[10.608,44.958],[10.550,44.930],[10.490,44.910],[10.426,44.896],[10.360,44.888],[10.294,44.886],[10.228,44.888],[10.162,44.896],[10.096,44.908],[10.030,44.924],[9.964,44.944],[9.898,44.966],[9.832,44.990],[9.766,45.016],[9.700,45.042],[9.634,45.068],[9.568,45.094],[9.502,45.118],[9.436,45.140],[9.370,45.160],[9.304,45.178],[9.238,45.192],[9.172,45.204],[9.106,45.212],[9.040,45.218],[8.974,45.220],[8.908,45.220],[8.842,45.216],[8.776,45.210],[8.710,45.200],[8.662,45.178],[8.622,45.152],[8.590,45.122],[8.568,45.090],[8.554,45.056],[8.548,45.020],[8.550,44.984],[8.560,44.948],[8.578,44.914],[8.602,44.882],[8.632,44.854],[8.668,44.830],[8.708,44.810],[8.752,44.796],[8.798,44.786],[8.846,44.780],[8.896,44.780],[8.946,44.784],[8.996,44.792],[9.046,44.804],[9.096,44.818],[9.146,44.836],[9.196,44.856],[9.246,44.878],[9.296,44.902],[9.346,44.926],[9.396,44.952],[9.446,44.978],[9.460,45.020],[9.466,45.064],[9.464,45.108],[9.454,45.150],[9.436,45.190],[9.410,45.228],[9.376,45.262],[9.334,45.292],[9.284,45.318],[9.228,45.340],[9.166,45.358],[9.098,45.372],[9.026,45.382],[8.950,45.388],[8.870,45.390],[8.790,45.388],[8.710,45.382],[8.660,45.368],[8.614,45.350],[8.572,45.330],[8.534,45.306],[8.502,45.280],[8.476,45.252],[8.456,45.222],[8.444,45.190],[8.440,45.158],[8.444,45.126],[8.456,45.094],[8.476,45.062],[8.504,45.032],[8.530,45.050],[8.546,45.082],[8.554,45.116],[8.554,45.150],[8.548,45.184],[8.536,45.218],[8.520,45.252],[8.502,45.284],[8.490,45.318],[8.484,45.352],[8.486,45.386],[8.494,45.420],[8.508,45.454],[8.528,45.488],[8.550,45.520],[8.566,45.554],[8.576,45.590],[8.580,45.626],[8.578,45.662],[8.572,45.698],[8.564,45.734],[8.560,45.770],[8.562,45.806],[8.572,45.840],[8.590,45.878]];
+
+function loadGeoJSON(cb){
+  document.getElementById('lsub').textContent='Caricamento confine regionale…';
+  fetch(GEOJSON_URL)
+    .then(function(r){if(!r.ok)throw new Error('HTTP '+r.status);return r.json();})
+    .then(function(data){
+      var feat=null;
+      data.features.forEach(function(f){
+        var n=(f.properties.reg_name||f.properties.NOME_REG||'').toLowerCase();
+        if(n.indexOf('lombar')>=0) feat=f;
+      });
+      if(!feat) throw new Error('not found');
+      lombardiaRings=[];
+      var geom=feat.geometry;
+      var polys=geom.type==='MultiPolygon'?geom.coordinates:[geom.coordinates];
+      polys.forEach(function(p){lombardiaRings.push(p);});
+      L.geoJSON(feat,{style:{color:'#1b3f6e',weight:1.5,opacity:0.55,fill:false}}).addTo(map);
+      cb();
+    })
+    .catch(function(e){
+      console.warn('GeoJSON fallback:',e.message);
+      lombardiaRings=[[FALLBACK_RING]];
+      var lls=FALLBACK_RING.map(function(c){return[c[1],c[0]];});
+      L.polygon(lls,{color:'#1b3f6e',weight:1.5,opacity:0.55,fill:false}).addTo(map);
+      cb();
+    });
+}
+
+// ── Avvio: carica solo il confine, poi aspetta click utente ──────────────────
+loadGeoJSON(function(){
+  document.getElementById('loader').style.display='none';
+  // Nessun caricamento automatico — l'utente sceglie il periodo
+});
 
 }());
 </script>
