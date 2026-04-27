@@ -494,14 +494,17 @@ function render(dati,fonte,labelPeriodo){
   // Aggiungi marker
   addMarkers(dati,sorted);
 
-  // Calcola heatmap in background
-  document.getElementById('tp-status').textContent='⏳ Calcolo mappa…';
+  // Calcola heatmap solo se c'è pioggia reale
+  var hasRain=dati.some(function(s){return s.mm>0;});
+  document.getElementById('tp-status').textContent= hasRain ? '⏳ Calcolo mappa…' : '✅ Nessuna pioggia nel periodo';
   setTimeout(function(){
     initCanvas();
     clearHeatmap();
-    gridPoints=buildGrid(dati);
-    drawGrid();
-    document.getElementById('tp-status').textContent='✅ '+labelPeriodo;
+    if(hasRain){
+      gridPoints=buildGrid(dati);
+      drawGrid();
+      document.getElementById('tp-status').textContent='✅ '+labelPeriodo;
+    }
     setLoading(false);
   },20);
 }
@@ -594,14 +597,16 @@ function loadData(pastDate,nowDate,labelPeriodo){
   document.getElementById('datehdr').textContent=
     fmtDate(pastDate)+' – '+fmtDate(nowDate)+' · ARPA';
 
-  // Funzione per ISO locale (evita offset UTC che sposta le date)
-  function toLocalISO(d){
+  // Il dataset ARPA pstb-pga6 memorizza i timestamp in UTC
+  // Usiamo ISO UTC standard per la query
+  function toUTCISO(d){
     var p=function(n){return String(n).padStart(2,'0');};
-    return d.getFullYear()+'-'+p(d.getMonth()+1)+'-'+p(d.getDate())+'T'+p(d.getHours())+':'+p(d.getMinutes())+':00';
+    return d.getUTCFullYear()+'-'+p(d.getUTCMonth()+1)+'-'+p(d.getUTCDate())
+      +'T'+p(d.getUTCHours())+':'+p(d.getUTCMinutes())+':00';
   }
-  var pastISO=toLocalISO(pastDate);
-  var nowISO=toLocalISO(nowDate);
-  console.log('[ARPA] Query periodo:', pastISO, '->', nowISO);
+  var pastISO=toUTCISO(pastDate);
+  var nowISO=toUTCISO(nowDate);
+  console.log('[ARPA] Query UTC:', pastISO, '->', nowISO);
 
   var stUrl='https://www.dati.lombardia.it/resource/nf78-nj6b.json'
     +'?$limit=600&$select=idsensore,nomestazione,lat,lng,quota,provincia'
@@ -625,24 +630,56 @@ function loadData(pastDate,nowDate,labelPeriodo){
         if(!isNaN(lat)&&!isNaN(lon)&&lat>44&&lat<47&&lon>7&&lon<12)
           stMap[s.idsensore]={n:s.nomestazione||'—',lat:lat,lon:lon,q:s.quota||'—',p:s.provincia||'—'};
       });
-      var out=[];
+      // Mappa stazioni con dati di pioggia
+      var rainMap={};
       res[1].forEach(function(pr){
         var mm=parseFloat(pr.tot);
         if(isNaN(mm)||mm<0) return;
-        var st=stMap[pr.idsensore]; if(!st) return;
-        out.push({n:st.n,lat:st.lat,lon:st.lon,q:st.q,p:st.p,mm:Math.round(mm*10)/10});
+        rainMap[pr.idsensore]=mm;
       });
-      if(out.length<5) throw new Error('dati insufficienti ('+out.length+')');
-      render(out,'🟢 ARPA live',labelPeriodo);
+
+      // Combina tutte le stazioni note con i loro valori (0 se nessuna misura)
+      var out=[];
+      Object.keys(stMap).forEach(function(id){
+        var st=stMap[id];
+        var mm=rainMap[id]||0;
+        // Soglia minima: < 0.5mm è considerato 0 (rumore strumentale/evaporazione)
+        var mmClean = mm < 0.5 ? 0.0 : Math.round(mm*10)/10;
+        out.push({n:st.n,lat:st.lat,lon:st.lon,q:st.q,p:st.p,mm:mmClean});
+      });
+
+      if(out.length<5) throw new Error('stazioni insufficienti ('+out.length+')');
+      var maxMm=Math.max.apply(null,out.map(function(s){return s.mm;}));
+      console.log('[ARPA] Stazioni:',out.length,'Max mm:',maxMm);
+      var fonte = maxMm===0 ? '🟢 ARPA live · nessuna pioggia' : '🟢 ARPA live';
+      render(out,fonte,labelPeriodo);
     })
     .catch(function(e){
       console.warn('ARPA non disponibile, uso campione scalato:', e.message);
-      // Scala i dati campione in proporzione al periodo (base 30 giorni)
       var msRange=nowDate.getTime()-pastDate.getTime();
+      var ms48h=48*3600000;
+      var ms7d=7*24*3600000;
+      
+      // Per periodi brevi (< 48h) NON simuliamo pioggia perché sarebbe fuorviante:
+      // mostriamo stazioni con 0mm (nessun dato disponibile)
+      if(msRange < ms48h){
+        var zeros=FALLBACK.map(function(s){
+          return {n:s.n,lat:s.lat,lon:s.lon,q:s.q,p:s.p,mm:0};
+        });
+        render(zeros,'⚠️ no dati live',labelPeriodo);
+        return;
+      }
+      
+      // Per periodi 2-7 giorni: scala ridotta con rumore realistico
+      // Per periodi > 7 giorni: scala proporzionale ai 30 giorni campione
       var ratio=Math.min(1, msRange/(30*24*3600000));
+      // Aggiungi variabilità realistica per non avere valori troppo uniformi
       var scaled=FALLBACK.map(function(s){
+        var base=s.mm*ratio;
+        // Variabilità ±20% casuale ma deterministica (basata su lat/lon)
+        var jitter=1+(((s.lat*100)%7-3.5)/17.5)*0.2;
         return {n:s.n,lat:s.lat,lon:s.lon,q:s.q,p:s.p,
-                mm:Math.max(0,Math.round(s.mm*ratio*10)/10)};
+                mm:Math.max(0,Math.round(base*jitter*10)/10)};
       });
       render(scaled,'🟡 campione',labelPeriodo);
     });
