@@ -567,17 +567,28 @@ function loadData(pastDate,nowDate,labelPeriodo){
   document.getElementById('datehdr').textContent=
     fmtDate(pastDate)+' – '+fmtDate(nowDate)+' · ARPA';
 
+  // Funzione per ISO locale (evita offset UTC che sposta le date)
+  function toLocalISO(d){
+    var p=function(n){return String(n).padStart(2,'0');};
+    return d.getFullYear()+'-'+p(d.getMonth()+1)+'-'+p(d.getDate())+'T'+p(d.getHours())+':'+p(d.getMinutes())+':00';
+  }
+  var pastISO=toLocalISO(pastDate);
+  var nowISO=toLocalISO(nowDate);
+  console.log('[ARPA] Query periodo:', pastISO, '->', nowISO);
+
   var stUrl='https://www.dati.lombardia.it/resource/nf78-nj6b.json'
     +'?$limit=600&$select=idsensore,nomestazione,lat,lng,quota,provincia'
     +"&$where=tipologiasensore='Pioggia'";
+
+  // BETWEEN garantisce filtro preciso sul range selezionato
   var prUrl='https://www.dati.lombardia.it/resource/pstb-pga6.json'
     +'?$select=idsensore,sum(valore)%20as%20tot'
-    +'&$where=data>=%27'+fmtISO(pastDate)+'T00:00:00%27'
+    +'&$where=data%20between%20%27'+pastISO+'%27%20and%20%27'+nowISO+'%27'
     +'&$group=idsensore&$limit=5000';
 
   Promise.all([fetch(stUrl),fetch(prUrl)])
     .then(function(rs){
-      if(!rs[0].ok||!rs[1].ok) throw new Error('HTTP');
+      if(!rs[0].ok||!rs[1].ok) throw new Error('HTTP '+rs[1].status);
       return Promise.all([rs[0].json(),rs[1].json()]);
     })
     .then(function(res){
@@ -594,12 +605,19 @@ function loadData(pastDate,nowDate,labelPeriodo){
         var st=stMap[pr.idsensore]; if(!st) return;
         out.push({n:st.n,lat:st.lat,lon:st.lon,q:st.q,p:st.p,mm:Math.round(mm*10)/10});
       });
-      if(out.length<5) throw new Error('dati insufficienti');
+      if(out.length<5) throw new Error('dati insufficienti ('+out.length+')');
       render(out,'🟢 ARPA live',labelPeriodo);
     })
     .catch(function(e){
-      console.warn('Fallback:',e.message);
-      render(FALLBACK,'🟡 campione',labelPeriodo);
+      console.warn('ARPA non disponibile, uso campione scalato:', e.message);
+      // Scala i dati campione in proporzione al periodo (base 30 giorni)
+      var msRange=nowDate.getTime()-pastDate.getTime();
+      var ratio=Math.min(1, msRange/(30*24*3600000));
+      var scaled=FALLBACK.map(function(s){
+        return {n:s.n,lat:s.lat,lon:s.lon,q:s.q,p:s.p,
+                mm:Math.max(0,Math.round(s.mm*ratio*10)/10)};
+      });
+      render(scaled,'🟡 campione',labelPeriodo);
     });
 }
 
