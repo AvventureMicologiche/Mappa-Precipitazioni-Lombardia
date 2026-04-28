@@ -244,7 +244,7 @@ h1{font-size:13px;font-weight:600;white-space:nowrap}
   <div class="hdr-l">
     <span style="font-size:18px">🌧</span>
     <div>
-      <h1>Precipitazioni Lombardia <span style="font-size:10px;font-weight:400;opacity:.6;letter-spacing:.05em;">(BETA V1.2)</span></h1>
+      <h1>Precipitazioni Lombardia <span style="font-size:10px;font-weight:400;opacity:.6;letter-spacing:.05em;">(BETA V1.3)</span></h1>
       <div class="hdr-sub" id="datehdr">Seleziona il periodo</div>
     </div>
   </div>
@@ -635,7 +635,7 @@ if(screenW<=480){
 } else {
   initZoom = 8;
 }
-var map=L.map('map',{zoomSnap:0.5,zoomDelta:0.5}).setView([45.8,9.85], initZoom);
+var map=L.map('map',{zoomSnap:0.5,zoomDelta:0.5}).setView([45.3,9.85], initZoom);
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{
   maxZoom:19,subdomains:'abc',
   attribution:'© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors | ARPA Lombardia'
