@@ -266,14 +266,21 @@ h1{font-size:13px;font-weight:600;white-space:nowrap}
     <div class="fonte-tag" id="fonte-tag">Fonte: ARPA Lombardia</div>
 
     <!-- Logo canale stile ARPAL — bottom right -->
-    <a href="https://www.youtube.com/@avventuremicologiche" target="_blank" id="channel-logo">
+    <a href="https://www.youtube.com/@avventuremicologiche" target="_blank"
+       style="position:absolute;bottom:28px;right:10px;z-index:1000;
+              display:flex;flex-direction:row;align-items:center;gap:8px;
+              background:rgba(255,255,255,.60);border-radius:6px;
+              padding:8px 12px;text-decoration:none;opacity:0.75;
+              transition:opacity .2s;white-space:normal;"
+       onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=0.75"
+       id="channel-logo">
       <svg width="36" height="36" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
         <rect width="36" height="36" rx="6" fill="#FF0000"/>
         <polygon points="14,10 14,26 27,18" fill="white"/>
       </svg>
-      <div class="ch-text">
-        <span>Avventure</span>
-        <span>Micologiche</span>
+      <div style="display:flex;flex-direction:column;align-items:flex-start;line-height:1.25;">
+        <span style="font-size:13px;font-weight:700;color:#1a1a2e;display:block;">Avventure</span>
+        <span style="font-size:13px;font-weight:700;color:#1a1a2e;display:block;">Micologiche</span>
       </div>
     </a>
 
