@@ -73,7 +73,7 @@ h1{font-size:13px;font-weight:600;white-space:nowrap}
   text-transform:uppercase;letter-spacing:.07em;margin-bottom:7px}
 .grad{height:13px;border-radius:4px;margin-bottom:4px;
   background:linear-gradient(to right,
-    #ffffff 0%,#e8e0f8 2%,#c8b8f0 5%,#a090e8 8%,#7878e0 12%,
+    #b4b4ff 0%,#c8c0f0 2%,#c8b8f0 5%,#a090e8 8%,#7878e0 12%,
     #5060d8 17%,#2848d0 23%,#1090e0 30%,#00c8c8 38%,#00d870 46%,
     #80e800 54%,#f8f000 62%,#f8b800 68%,#f87000 74%,
     #f83000 80%,#c80000 85%,#e000a0 90%,#f060c0 95%,#ffc0e0 100%)}
@@ -580,7 +580,7 @@ var LOMBARDIA_STATIONS=[
 // COLORI
 // ═══════════════════════════════════════════════════════════════
 var STOPS=[
-  {v:0,  r:255,g:255,b:255},{v:5,  r:200,g:184,b:240},
+  {v:0,  r:180,g:180,b:255},{v:5,  r:160,g:140,b:240},
   {v:15, r:112,g:120,b:224},{v:30, r:16, g:144,b:224},
   {v:50, r:0,  g:200,b:200},{v:70, r:0,  g:216,b:112},
   {v:90, r:128,g:232,b:0  },{v:110,r:248,g:240,b:0  },
@@ -589,6 +589,8 @@ var STOPS=[
   {v:260,r:224,g:0,  b:160},{v:300,r:240,g:96, b:192},
   {v:400,r:255,g:192,b:224}
 ];
+// Soglia minima per mostrare colore — sotto 0.3mm = trasparente
+var MIN_MM_DISPLAY=0.3;
 function mmToRGB(mm){
   var v=Math.max(0,Math.min(mm,400));
   for(var i=1;i<STOPS.length;i++){
@@ -715,8 +717,12 @@ function drawGrid(){
     if(x1<0||y1<0||x0>=W||y0>=H) continue;
     var rgb=mmToRGB(g.mm);
     var r=rgb[0],g2=rgb[1],b=rgb[2];
+    // Sotto soglia: trasparente. Tra soglia e 2mm: fade-in graduale
+    var fa=a;
+    if(g.mm<MIN_MM_DISPLAY){continue;}
+    else if(g.mm<2.0){fa=Math.round(a*(g.mm-MIN_MM_DISPLAY)/(2.0-MIN_MM_DISPLAY));}
     var xa=Math.max(0,x0),xb=Math.min(W,x1),ya=Math.max(0,y0),yb=Math.min(H,y1);
-    for(var y=ya;y<yb;y++){var row=y*W*4+xa*4;for(var x=xa;x<xb;x++){px[row]=r;px[row+1]=g2;px[row+2]=b;px[row+3]=a;row+=4;}}
+    for(var y=ya;y<yb;y++){var row=y*W*4+xa*4;for(var x=xa;x<xb;x++){px[row]=r;px[row+1]=g2;px[row+2]=b;px[row+3]=fa;row+=4;}}
   }
   heatCtx.putImageData(imgData,0,0);
   cvs.style.opacity='1';
