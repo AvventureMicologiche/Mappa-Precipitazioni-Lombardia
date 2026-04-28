@@ -267,19 +267,20 @@ h1{font-size:13px;font-weight:600;white-space:nowrap}
 
     <!-- Logo canale stile ARPAL — bottom right -->
     <a href="https://www.youtube.com/@avventuremicologiche" target="_blank"
-       style="position:absolute;bottom:28px;right:10px;z-index:1000;
-              display:flex;flex-direction:row;align-items:center;gap:8px;
-              background:rgba(255,255,255,.60);border-radius:6px;
-              padding:8px 12px;text-decoration:none;opacity:0.75;
-              transition:opacity .2s;"
-       onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=0.75"
+       style="position:absolute;bottom:30px;right:12px;z-index:1000;
+              display:flex;flex-direction:row;align-items:center;gap:12px;
+              background:rgba(255,255,255,.82);border-radius:8px;
+              padding:10px 20px 10px 14px;text-decoration:none;opacity:0.9;
+              transition:opacity .2s;box-shadow:0 1px 6px rgba(0,0,0,.15);"
+       onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=0.9"
        id="channel-logo">
-      <svg width="36" height="36" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <rect width="36" height="36" rx="6" fill="#FF0000"/>
-        <polygon points="14,10 14,26 27,18" fill="white"/>
+      <svg width="44" height="31" viewBox="0 0 44 31" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <rect width="44" height="31" rx="6" fill="#FF0000"/>
+        <polygon points="17,7 17,24 32,15" fill="white"/>
       </svg>
-      <div style="width:72px;line-height:1.35;word-break:break-word;">
-        <b style="font-size:11px;color:#1a1a2e;font-family:Arial,sans-serif;">Avventure<br>Micologiche</b>
+      <div style="display:flex;flex-direction:column;line-height:1.25;">
+        <span style="font-size:18px;font-weight:700;color:#111;font-family:'Segoe UI',Arial,sans-serif;">Avventure</span>
+        <span style="font-size:18px;font-weight:700;color:#111;font-family:'Segoe UI',Arial,sans-serif;">Micologiche</span>
       </div>
     </a>
 
@@ -623,9 +624,9 @@ function col(mm){var c=mmToRGB(mm);return'rgb('+c[0]+','+c[1]+','+c[2]+')';}
 var screenW=window.innerWidth;
 var initZoom = screenW<=480 ? 6 : screenW<=900 ? 7 : 8;
 var map=L.map('map').setView([45.65,9.85], initZoom);
-L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{
-  maxZoom:18,subdomains:'abc',
-  attribution:'© OpenStreetMap'
+L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',{
+  maxZoom:19,subdomains:'abcd',
+  attribution:'© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors © <a href="https://carto.com/attributions">CARTO</a>'
 }).addTo(map);
 
 // ═══════════════════════════════════════════════════════════════
