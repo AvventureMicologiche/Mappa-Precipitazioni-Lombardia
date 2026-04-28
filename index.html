@@ -38,15 +38,15 @@ h1{font-size:13px;font-weight:600;white-space:nowrap}
   padding:11px 13px;box-shadow:0 2px 12px rgba(0,0,0,.22);
   width:280px;pointer-events:all;
 }
-.tp-title{font-size:13px;font-weight:700;color:#1b3f6e;
+.tp-title{font-size:11px;font-weight:700;color:#1b3f6e;
   text-transform:uppercase;letter-spacing:.07em;margin-bottom:9px;
   display:flex;align-items:center;gap:5px}
 .tp-grid5{display:grid;grid-template-columns:repeat(5,1fr);gap:4px;margin-bottom:4px}
 .tp-grid4{display:grid;grid-template-columns:repeat(4,1fr);gap:4px;margin-bottom:4px}
 .tp-btn{
   background:#f0f4fb;border:1px solid #d0d8e8;border-radius:5px;
-  font-size:13px;font-weight:600;color:#1b3f6e;
-  padding:7px 3px;text-align:center;cursor:pointer;
+  font-size:12px;font-weight:600;color:#1b3f6e;
+  padding:6px 2px;text-align:center;cursor:pointer;
   transition:background .12s;user-select:none;
 }
 .tp-btn:hover{background:#dde8ff;border-color:#90b0d8}
@@ -54,12 +54,12 @@ h1{font-size:13px;font-weight:600;white-space:nowrap}
 .tp-custom-btn{
   width:100%;margin-top:4px;padding:6px;
   background:#f0f4fb;border:1px solid #d0d8e8;border-radius:5px;
-  font-size:13px;font-weight:600;color:#1b3f6e;cursor:pointer;
+  font-size:11px;font-weight:600;color:#1b3f6e;cursor:pointer;
   text-align:center;transition:background .12s;
 }
 .tp-custom-btn:hover{background:#dde8ff}
 .tp-custom-btn.active{background:#1b3f6e;color:#fff}
-#tp-status{font-size:12px;color:#1b6e3f;font-weight:600;margin-top:6px;min-height:14px}
+#tp-status{font-size:10px;color:#1b6e3f;font-weight:600;margin-top:6px;min-height:14px}
 #tp-spinner{display:none;align-items:center;gap:6px;margin-top:6px;font-size:10px;color:#888}
 .mini-spin{width:12px;height:12px;border:2px solid #dde;border-top-color:#1b3f6e;
   border-radius:50%;animation:spin .6s linear infinite;flex-shrink:0}
@@ -81,19 +81,19 @@ h1{font-size:13px;font-weight:600;white-space:nowrap}
   padding:11px 14px;box-shadow:0 2px 12px rgba(0,0,0,.22);
   width:280px;pointer-events:all;display:none;
 }
-.leg-title{font-size:13px;font-weight:700;color:#777;
+.leg-title{font-size:10px;font-weight:700;color:#777;
   text-transform:uppercase;letter-spacing:.07em;margin-bottom:7px}
-.grad{height:15px;border-radius:4px;margin-bottom:4px;
+.grad{height:13px;border-radius:4px;margin-bottom:4px;
   background:linear-gradient(to right,
     #ffffff 0%,#e8e0f8 2%,#c8b8f0 5%,#a090e8 8%,#7878e0 12%,
     #5060d8 17%,#2848d0 23%,#1090e0 30%,#00c8c8 38%,#00d870 46%,
     #80e800 54%,#f8f000 62%,#f8b800 68%,#f87000 74%,
     #f83000 80%,#c80000 85%,#e000a0 90%,#f060c0 95%,#ffc0e0 100%)}
-.grad-l{display:flex;justify-content:space-between;font-size:11px;color:#aaa;margin-bottom:8px}
+.grad-l{display:flex;justify-content:space-between;font-size:9px;color:#aaa;margin-bottom:8px}
 .stats-row{display:grid;grid-template-columns:repeat(4,1fr);gap:4px}
 .stat{background:#f0f4fb;border-radius:5px;padding:5px 4px;text-align:center}
-.sv{font-size:20px;font-weight:700;color:#1b3f6e;line-height:1}
-.sl{font-size:10px;color:#bbb;text-transform:uppercase;margin-top:2px}
+.sv{font-size:17px;font-weight:700;color:#1b3f6e;line-height:1}
+.sl{font-size:7px;color:#bbb;text-transform:uppercase;margin-top:2px}
 
 /* ── Tooltip ── */
 #st-tooltip{
@@ -211,7 +211,7 @@ h1{font-size:13px;font-weight:600;white-space:nowrap}
 
 <div class="fonte">
   Dati: <a href="https://www.dati.lombardia.it" target="_blank">ARPA Lombardia</a> ·
-  <a href="https://open-meteo.com" target="_blank">Open-Meteo</a> (fallback) &nbsp;|&nbsp;
+  <a href="https://open-meteo.com" target="_blank">Open-Meteo</a> (Piemonte/Liguria/Emilia) &nbsp;|&nbsp;
   Mappa: <a href="https://www.openstreetmap.org/copyright" target="_blank">© OpenStreetMap</a>
 </div>
 
@@ -219,7 +219,181 @@ h1{font-size:13px;font-weight:600;white-space:nowrap}
 (function(){
 'use strict';
 
-var LOMBARDIA_STATIONS = [
+// ═══════════════════════════════════════════════════════════════
+// CONFIGURAZIONE REGIONI
+// ═══════════════════════════════════════════════════════════════
+var REGIONS = {
+
+  lombardia: {
+    name: 'Lombardia',
+    center: [45.65, 9.85], zoom: 8,
+    fonte: 'ARPA Lombardia (Socrata live)',
+    geojson: 'https://raw.githubusercontent.com/openpolis/geojson-italy/master/geojson/limits_IT_regions.geojson',
+    geojsonFilter: 'lombar',
+    dataSource: 'arpa_lombardia',
+    // Stazioni reali con coordinate (usate anche per Open-Meteo fallback)
+    stations: [
+      {n:"Milano Lambrate",    lat:45.484,lon:9.238, q:122,p:"MI"},
+      {n:"Milano Brera",       lat:45.472,lon:9.186, q:121,p:"MI"},
+      {n:"Sesto S.Giovanni",   lat:45.534,lon:9.234, q:134,p:"MI"},
+      {n:"Rho",                lat:45.530,lon:9.041, q:154,p:"MI"},
+      {n:"Monza",              lat:45.584,lon:9.274, q:162,p:"MB"},
+      {n:"Varese Ville Ponti", lat:45.821,lon:8.825, q:382,p:"VA"},
+      {n:"Varese Capolago",    lat:45.868,lon:8.834, q:432,p:"VA"},
+      {n:"Luino",              lat:46.000,lon:8.744, q:202,p:"VA"},
+      {n:"Busto Arsizio",      lat:45.612,lon:8.852, q:224,p:"VA"},
+      {n:"Como",               lat:45.810,lon:9.085, q:201,p:"CO"},
+      {n:"Bellagio",           lat:45.987,lon:9.260, q:210,p:"CO"},
+      {n:"Erba",               lat:45.812,lon:9.222, q:322,p:"CO"},
+      {n:"Chiavenna",          lat:46.324,lon:9.397, q:333,p:"SO"},
+      {n:"Morbegno",           lat:46.135,lon:9.578, q:247,p:"SO"},
+      {n:"Sondrio",            lat:46.170,lon:9.875, q:307,p:"SO"},
+      {n:"Bormio",             lat:46.468,lon:10.374,q:1225,p:"SO"},
+      {n:"Livigno",            lat:46.537,lon:10.134,q:1816,p:"SO"},
+      {n:"Tirano",             lat:46.215,lon:10.168,q:441,p:"SO"},
+      {n:"Valsassina",         lat:45.976,lon:9.450, q:760,p:"LC"},
+      {n:"Lecco Balisio",      lat:45.918,lon:9.368, q:490,p:"LC"},
+      {n:"Bergamo",            lat:45.674,lon:9.700, q:238,p:"BG"},
+      {n:"Clusone",            lat:45.890,lon:9.945, q:648,p:"BG"},
+      {n:"Lovere",             lat:45.811,lon:10.070,q:201,p:"BG"},
+      {n:"Brescia",            lat:45.541,lon:10.213,q:149,p:"BS"},
+      {n:"Breno",              lat:45.952,lon:10.299,q:327,p:"BS"},
+      {n:"Edolo",              lat:46.177,lon:10.332,q:698,p:"BS"},
+      {n:"Gargnano",           lat:45.694,lon:10.659,q:65, p:"BS"},
+      {n:"Iseo",               lat:45.659,lon:10.045,q:186,p:"BS"},
+      {n:"Pavia",              lat:45.185,lon:9.155, q:77, p:"PV"},
+      {n:"Vigevano",           lat:45.318,lon:8.859, q:116,p:"PV"},
+      {n:"Lodi",               lat:45.311,lon:9.502, q:87, p:"LO"},
+      {n:"Cremona",            lat:45.133,lon:10.027,q:45, p:"CR"},
+      {n:"Mantova",            lat:45.157,lon:10.791,q:19, p:"MN"}
+    ]
+  },
+
+  piemonte: {
+    name: 'Piemonte',
+    center: [44.9, 7.9], zoom: 8,
+    fonte: 'Open-Meteo (ERA5 reanalysis)',
+    geojson: 'https://raw.githubusercontent.com/openpolis/geojson-italy/master/geojson/limits_IT_regions.geojson',
+    geojsonFilter: 'piemon',
+    dataSource: 'open_meteo',
+    stations: [
+      {n:"Torino",          lat:45.070,lon:7.686, q:240, p:"TO"},
+      {n:"Cuneo",           lat:44.385,lon:7.542, q:534, p:"CN"},
+      {n:"Alessandria",     lat:44.912,lon:8.615, q:95,  p:"AL"},
+      {n:"Asti",            lat:44.900,lon:8.207, q:123, p:"AT"},
+      {n:"Novara",          lat:45.446,lon:8.621, q:162, p:"NO"},
+      {n:"Verbania",        lat:45.921,lon:8.552, q:197, p:"VB"},
+      {n:"Vercelli",        lat:45.326,lon:8.418, q:130, p:"VC"},
+      {n:"Biella",          lat:45.563,lon:8.058, q:420, p:"BI"},
+      {n:"Domodossola",     lat:46.113,lon:8.294, q:272, p:"VB"},
+      {n:"Ivrea",           lat:45.467,lon:7.873, q:253, p:"TO"},
+      {n:"Pinerolo",        lat:44.884,lon:7.329, q:376, p:"TO"},
+      {n:"Saluzzo",         lat:44.645,lon:7.490, q:395, p:"CN"},
+      {n:"Alba",            lat:44.700,lon:8.033, q:172, p:"CN"},
+      {n:"Acqui Terme",     lat:44.674,lon:8.469, q:156, p:"AL"},
+      {n:"Varallo",         lat:45.818,lon:8.254, q:453, p:"VC"},
+      {n:"Alagna Valsesia", lat:45.864,lon:7.940, q:1195,p:"VC"},
+      {n:"Macugnaga",       lat:45.964,lon:7.963, q:1327,p:"VB"},
+      {n:"Bra",             lat:44.697,lon:7.855, q:290, p:"CN"},
+      {n:"Fossano",         lat:44.551,lon:7.725, q:400, p:"CN"},
+      {n:"Casale Monf.",    lat:45.133,lon:8.452, q:113, p:"AL"},
+      {n:"Villadossola",    lat:46.069,lon:8.260, q:303, p:"VB"},
+      {n:"Pallanza",        lat:45.929,lon:8.530, q:209, p:"VB"},
+      {n:"Borgosesia",      lat:45.716,lon:8.275, q:354, p:"VC"},
+      {n:"Oropa",           lat:45.621,lon:8.006, q:1180,p:"BI"},
+      {n:"Ceresole Reale",  lat:45.426,lon:7.226, q:1616,p:"TO"},
+      {n:"Sestriere",       lat:44.958,lon:6.878, q:2024,p:"TO"},
+      {n:"Mondovì",         lat:44.388,lon:7.819, q:399, p:"CN"},
+      {n:"Vignale Monf.",   lat:45.016,lon:8.375, q:247, p:"AL"},
+      {n:"Arona",           lat:45.762,lon:8.556, q:212, p:"NO"},
+      {n:"Omegna",          lat:45.878,lon:8.407, q:301, p:"VB"}
+    ]
+  },
+
+  liguria: {
+    name: 'Liguria',
+    center: [44.4, 8.7], zoom: 9,
+    fonte: 'Open-Meteo (ERA5 reanalysis)',
+    geojson: 'https://raw.githubusercontent.com/openpolis/geojson-italy/master/geojson/limits_IT_regions.geojson',
+    geojsonFilter: 'ligur',
+    dataSource: 'open_meteo',
+    stations: [
+      {n:"Genova",          lat:44.407,lon:8.934, q:19,  p:"GE"},
+      {n:"Savona",          lat:44.307,lon:8.482, q:4,   p:"SV"},
+      {n:"La Spezia",       lat:44.102,lon:9.824, q:5,   p:"SP"},
+      {n:"Imperia",         lat:43.889,lon:8.026, q:30,  p:"IM"},
+      {n:"Sanremo",         lat:43.816,lon:7.776, q:10,  p:"IM"},
+      {n:"Albenga",         lat:44.050,lon:8.213, q:9,   p:"SV"},
+      {n:"Chiavari",        lat:44.315,lon:9.323, q:14,  p:"GE"},
+      {n:"Rapallo",         lat:44.351,lon:9.230, q:30,  p:"GE"},
+      {n:"Sestri Levante",  lat:44.270,lon:9.395, q:7,   p:"GE"},
+      {n:"Voltri",          lat:44.420,lon:8.757, q:10,  p:"GE"},
+      {n:"Varazze",         lat:44.361,lon:8.578, q:9,   p:"SV"},
+      {n:"Finale Ligure",   lat:44.168,lon:8.342, q:8,   p:"SV"},
+      {n:"Loano",           lat:44.129,lon:8.259, q:7,   p:"SV"},
+      {n:"Pietra Ligure",   lat:44.148,lon:8.282, q:5,   p:"SV"},
+      {n:"Portofino",       lat:44.303,lon:9.209, q:5,   p:"GE"},
+      {n:"Arenzano",        lat:44.407,lon:8.686, q:10,  p:"GE"},
+      {n:"Ventimiglia",     lat:43.790,lon:7.604, q:5,   p:"IM"},
+      {n:"Sarzana",         lat:44.112,lon:9.959, q:14,  p:"SP"},
+      {n:"Levanto",         lat:44.170,lon:9.611, q:5,   p:"SP"},
+      {n:"Moneglia",        lat:44.234,lon:9.492, q:7,   p:"GE"},
+      {n:"Pieve di Teco",   lat:44.051,lon:7.919, q:262, p:"IM"},
+      {n:"Ceva",            lat:44.387,lon:8.036, q:450, p:"CN"},
+      {n:"Sassello",        lat:44.477,lon:8.490, q:386, p:"SV"},
+      {n:"Triora",          lat:43.992,lon:7.765, q:780, p:"IM"},
+      {n:"Rezzoaglio",      lat:44.501,lon:9.353, q:831, p:"GE"},
+      {n:"Santo Stefano d'Aveto",lat:44.552,lon:9.393,q:1015,p:"GE"},
+      {n:"Borzonasca",      lat:44.434,lon:9.413, q:370, p:"GE"},
+      {n:"Bedonia",         lat:44.501,lon:9.626, q:450, p:"PR"},
+      {n:"Torriglia",       lat:44.519,lon:9.155, q:777, p:"GE"},
+      {n:"Masone",          lat:44.497,lon:8.710, q:433, p:"GE"}
+    ]
+  },
+
+  emilia: {
+    name: 'Emilia-Romagna',
+    center: [44.5, 11.0], zoom: 8,
+    fonte: 'Open-Meteo (ERA5 reanalysis)',
+    geojson: 'https://raw.githubusercontent.com/openpolis/geojson-italy/master/geojson/limits_IT_regions.geojson',
+    geojsonFilter: 'emilia',
+    dataSource: 'open_meteo',
+    stations: [
+      {n:"Bologna",         lat:44.494,lon:11.343,q:54,  p:"BO"},
+      {n:"Ferrara",         lat:44.836,lon:11.620,q:9,   p:"FE"},
+      {n:"Modena",          lat:44.646,lon:10.926,q:34,  p:"MO"},
+      {n:"Reggio Emilia",   lat:44.698,lon:10.631,q:58,  p:"RE"},
+      {n:"Parma",           lat:44.801,lon:10.328,q:57,  p:"PR"},
+      {n:"Piacenza",        lat:45.052,lon:9.693, q:61,  p:"PC"},
+      {n:"Ravenna",         lat:44.418,lon:12.204,q:4,   p:"RA"},
+      {n:"Rimini",          lat:44.059,lon:12.565,q:8,   p:"RN"},
+      {n:"Forlì",           lat:44.222,lon:12.041,q:33,  p:"FC"},
+      {n:"Cesena",          lat:44.133,lon:12.243,q:44,  p:"FC"},
+      {n:"Imola",           lat:44.352,lon:11.714,q:47,  p:"BO"},
+      {n:"Faenza",          lat:44.286,lon:11.883,q:35,  p:"RA"},
+      {n:"Lugo",            lat:44.420,lon:11.904,q:14,  p:"RA"},
+      {n:"Comacchio",       lat:44.695,lon:12.183,q:2,   p:"FE"},
+      {n:"Fidenza",         lat:44.865,lon:10.063,q:75,  p:"PR"},
+      {n:"Guastalla",       lat:44.921,lon:10.660,q:24,  p:"RE"},
+      {n:"Carpi",           lat:44.782,lon:10.886,q:26,  p:"MO"},
+      {n:"Sassuolo",        lat:44.547,lon:10.785,q:121, p:"MO"},
+      {n:"Pavullo",         lat:44.337,lon:10.834,q:682, p:"MO"},
+      {n:"Lago Scaffaiolo", lat:44.175,lon:10.714,q:1773,p:"MO"},
+      {n:"Porretta Terme",  lat:44.157,lon:11.026,q:348, p:"BO"},
+      {n:"Castel S.Pietro", lat:44.401,lon:11.583,q:75,  p:"BO"},
+      {n:"Argenta",         lat:44.614,lon:11.833,q:2,   p:"FE"},
+      {n:"Boretto",         lat:44.898,lon:10.554,q:25,  p:"RE"},
+      {n:"Castelnovo Monti",lat:44.432,lon:10.410,q:724, p:"RE"},
+      {n:"Fiumalbo",        lat:44.166,lon:10.637,q:953, p:"MO"},
+      {n:"Riccione",        lat:44.003,lon:12.655,q:4,   p:"RN"},
+      {n:"Cattolica",       lat:43.966,lon:12.730,q:4,   p:"RN"},
+      {n:"Sasso Marconi",   lat:44.399,lon:11.253,q:124, p:"BO"},
+      {n:"Vergato",         lat:44.281,lon:11.108,q:280, p:"BO"}
+    ]
+  }
+};
+
+var LOMBARDIA_STATIONS=[
       {n:"Milano Lambrate",    lat:45.484,lon:9.238, q:122,p:"MI"},
       {n:"Milano Brera",       lat:45.472,lon:9.186, q:121,p:"MI"},
       {n:"Sesto S.Giovanni",   lat:45.534,lon:9.234, q:134,p:"MI"},
@@ -604,89 +778,61 @@ function loadOpenMeteo(stations,pastDate,nowDate,labelPeriodo,badgePrefix){
     var lons=batch.map(function(s){return s.lon;}).join(',');
     var startDate=fmtDate(pastDate);
     var endDate=fmtDate(nowDate);
+    var startStr=startDate, endStr=endDate;
 
-    // Open-Meteo: usa daily precipitation_sum per periodi > 2gg (più stabile),
-    // hourly per periodi brevi. Archive ha ritardo ~5gg quindi per recenti usa forecast.
+    // Strategia: ≤92gg→Forecast, >92gg storico→Archive, >92gg recente→Archive+Forecast
     var days=Math.ceil(msRange/(24*3600000));
-    var today=new Date();
-    var fiveDaysAgo=new Date(today.getTime()-5*24*3600000);
-    // Se il periodo termina negli ultimi 5 giorni, non possiamo usare archive
-    var needsForecast=nowDate>fiveDaysAgo;
-    var url;
-
-    // Strategia URL Open-Meteo:
-    // - Forecast API: max 92 past_days, include dati recenti
-    // - Archive API: dati storici senza limite, ma ritardo ~5gg
-    // - Per periodi > 92gg che includono date recenti: archive + forecast combinati
-    var today=new Date();
-    var cutoff=new Date(today.getTime()-6*24*3600000); // 6gg fa = limite sicuro archive
-    var days=Math.ceil(msRange/(24*3600000));
+    var cutoff=new Date(new Date().getTime()-6*24*3600000);
     var urls=[];
-
     if(days<=92){
-      // Tutto in forecast
       urls.push('https://api.open-meteo.com/v1/forecast'
         +'?latitude='+lats+'&longitude='+lons
         +'&daily=precipitation_sum&timezone=Europe%2FRome'
         +'&past_days='+days+'&forecast_days=0');
     } else if(nowDate<=cutoff){
-      // Tutto storico → archive
       urls.push('https://archive-api.open-meteo.com/v1/archive'
         +'?latitude='+lats+'&longitude='+lons
         +'&start_date='+startDate+'&end_date='+endDate
         +'&daily=precipitation_sum&timezone=Europe%2FRome');
     } else {
-      // Periodo lungo che include date recenti: archive fino a 6gg fa + forecast per ultimi 6gg
-      var archiveEnd=fmtDate(cutoff);
       urls.push('https://archive-api.open-meteo.com/v1/archive'
         +'?latitude='+lats+'&longitude='+lons
-        +'&start_date='+startDate+'&end_date='+archiveEnd
+        +'&start_date='+startDate+'&end_date='+fmtDate(cutoff)
         +'&daily=precipitation_sum&timezone=Europe%2FRome');
       urls.push('https://api.open-meteo.com/v1/forecast'
         +'?latitude='+lats+'&longitude='+lons
         +'&daily=precipitation_sum&timezone=Europe%2FRome'
         +'&past_days=6&forecast_days=0');
     }
-
-    var startStr=fmtDate(pastDate);
-    var endStr=fmtDate(nowDate);
-
-    function processOMResponse(data,accumulator){
+    function processOM(data,acc){
       var arr=Array.isArray(data)?data:[data];
-      arr.forEach(function(loc,idx){
-        var st=batch[idx];
-        if(!st) return;
-        var daily=loc.daily;
-        if(!daily||!daily.time) return;
-        var times=daily.time;
-        var precip=daily.precipitation_sum;
-        for(var i=0;i<times.length;i++){
-          if(times[i]>=startStr&&times[i]<=endStr){
-            var v=parseFloat(precip[i]);
-            if(!isNaN(v)&&v>0) accumulator[st.n]=(accumulator[st.n]||0)+v;
+      arr.forEach(function(loc,i){
+        var st=batch[i]; if(!st) return;
+        var daily=loc.daily; if(!daily||!daily.time) return;
+        for(var j=0;j<daily.time.length;j++){
+          if(daily.time[j]>=startStr&&daily.time[j]<=endStr){
+            var v=parseFloat(daily.precipitation_sum[j]);
+            if(!isNaN(v)&&v>0) acc[st.n]=(acc[st.n]||0)+v;
           }
         }
       });
     }
-
-    // Esegui le fetch in sequenza e accumula
     var acc={};
     urls.reduce(function(chain,url){
-      return chain.then(function(){
-        return fetch(url)
-          .then(function(r){if(!r.ok)throw new Error('OM '+r.status);return r.json();})
-          .then(function(data){processOMResponse(data,acc);});
-      });
-    }, Promise.resolve())
+      return chain
+        .then(function(){return fetch(url);})
+        .then(function(r){if(!r.ok)throw new Error('OM '+r.status);return r.json();})
+        .then(function(data){processOM(data,acc);});
+    },Promise.resolve())
     .then(function(){
-      batch.forEach(function(st){
-        var total=acc[st.n]||0;
-        results[st.n]=total<0.5?0:Math.round(total*10)/10;
+      batch.forEach(function(s){
+        var t=acc[s.n]||0;
+        results[s.n]=t<0.5?0:Math.round(t*10)/10;
       });
       onBatchDone();
     })
     .catch(function(e){
-      console.warn('Open-Meteo batch error:',e.message);
+      console.warn('Open-Meteo error:',e.message);
       batch.forEach(function(s){results[s.n]=0;});
       onBatchDone();
     });
@@ -711,14 +857,9 @@ function loadData(pastDate,nowDate,labelPeriodo){
   var d1=new Date(pastDate),d2=new Date(nowDate);
   function fmtD(d){return d.toLocaleDateString('it-IT',{day:'2-digit',month:'short',year:'numeric'});}
   document.getElementById('datehdr').textContent=fmtD(d1)+' – '+fmtD(d2);
-
   document.getElementById('fonte-tag').textContent='Fonte: ARPA Lombardia / Open-Meteo';
 
-  if(reg.dataSource==='arpa_lombardia'){
-    loadARPALombardia(pastDate,nowDate,labelPeriodo);
-  } else {
-    loadOpenMeteo(reg.stations,pastDate,nowDate,labelPeriodo,'');
-  }
+  loadARPALombardia(pastDate,nowDate,labelPeriodo);
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -763,6 +904,35 @@ function setRegionBorder(regionKey,cb){
     cb();
   });
 }
+
+// ═══════════════════════════════════════════════════════════════
+// CAMBIO REGIONE
+// ═══════════════════════════════════════════════════════════════
+function switchRegion(regionKey){
+  if(regionKey===currentRegion) return;
+  currentRegion=regionKey;
+
+  // Aggiorna tab
+  document.querySelectorAll('.rtab').forEach(function(t){
+    t.classList.toggle('active',t.dataset.region===regionKey);
+  });
+
+  // Reset UI
+  document.querySelectorAll('.tp-btn,.tp-custom-btn').forEach(function(b){b.classList.remove('active');});
+  clearMarkers();
+  clearHeatmap();
+  document.getElementById('legend-panel').style.display='none';
+  document.getElementById('tp-status').textContent='';
+  document.getElementById('badge').textContent='–';
+  document.getElementById('datehdr').textContent='Seleziona un periodo';
+  hideTooltip();
+
+  // fonte già impostata in loadData
+}
+
+document.querySelectorAll('.rtab').forEach(function(tab){
+  tab.addEventListener('click',function(){switchRegion(this.dataset.region);});
+});
 
 // ═══════════════════════════════════════════════════════════════
 // PULSANTI PERIODO
@@ -831,6 +1001,7 @@ document.getElementById('cd-apply').addEventListener('click',function(){
 // ═══════════════════════════════════════════════════════════════
 setRegionBorder('lombardia',function(){
   document.getElementById('loader').style.display='none';
+  // fonte già impostata in loadData
 });
 
 }());
