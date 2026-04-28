@@ -18,6 +18,7 @@ header{background:#1b3f6e;color:#fff;padding:0 12px;height:46px;
 .hdr-l{display:flex;align-items:center;gap:8px;flex-shrink:0}
 h1{font-size:13px;font-weight:600;white-space:nowrap}
 .hdr-sub{font-size:9px;opacity:.6;white-space:nowrap}
+#yt-link:hover{background:rgba(255,255,255,.22)!important;}
 #badge{font-size:9px;padding:2px 8px;border-radius:10px;
   background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.2);
   white-space:nowrap;flex-shrink:0}
@@ -221,6 +222,18 @@ h1{font-size:13px;font-weight:600;white-space:nowrap}
       <div class="hdr-sub" id="datehdr">Seleziona regione e periodo</div>
     </div>
   </div>
+  <a id="yt-link" href="https://www.youtube.com/@avventuremicologiche" target="_blank"
+     style="display:flex;align-items:center;gap:7px;text-decoration:none;
+            background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.25);
+            border-radius:20px;padding:4px 12px 4px 8px;
+            transition:background .15s;flex-shrink:0;">
+    <!-- YouTube logo SVG -->
+    <svg width="22" height="16" viewBox="0 0 22 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <rect width="22" height="16" rx="4" fill="#FF0000"/>
+      <polygon points="9,4 9,12 16,8" fill="white"/>
+    </svg>
+    <span style="color:#fff;font-size:11px;font-weight:600;white-space:nowrap;">Avventure Micologiche</span>
+  </a>
   <div id="badge">–</div>
 </header>
 
@@ -345,7 +358,19 @@ var REGIONS = {
       {n:"Vigevano",           lat:45.318,lon:8.859, q:116,p:"PV"},
       {n:"Lodi",               lat:45.311,lon:9.502, q:87, p:"LO"},
       {n:"Cremona",            lat:45.133,lon:10.027,q:45, p:"CR"},
-      {n:"Mantova",            lat:45.157,lon:10.791,q:19, p:"MN"}
+      {n:"Mantova",            lat:45.157,lon:10.791,q:19, p:"MN"},
+      {n:"Guidizzolo",          lat:45.317,lon:10.582,q:64, p:"MN"},
+      {n:"Voghera",             lat:44.997,lon:9.007, q:106,p:"PV"},
+      {n:"Desenzano d'Garda",  lat:45.468,lon:10.537,q:67, p:"BS"},
+      {n:"Codogno",             lat:45.160,lon:9.704, q:72, p:"LO"},
+      {n:"Crema",               lat:45.363,lon:9.686, q:79, p:"CR"},
+      {n:"Sesto Calende",       lat:45.731,lon:8.638, q:197,p:"VA"},
+      {n:"Saronno",             lat:45.624,lon:9.040, q:212,p:"VA"},
+      {n:"Cantù",               lat:45.737,lon:9.128, q:370,p:"CO"},
+      {n:"Seriate",             lat:45.682,lon:9.727, q:213,p:"BG"},
+      {n:"Sarnico",             lat:45.679,lon:9.966, q:186,p:"BG"},
+      {n:"Palazzolo Oglio",     lat:45.598,lon:9.879, q:166,p:"BS"},
+      {n:"Iseo",                lat:45.659,lon:10.045,q:186,p:"BS"}
     ]
   },
 
@@ -506,7 +531,19 @@ var LOMBARDIA_STATIONS=[
       {n:"Vigevano",           lat:45.318,lon:8.859, q:116,p:"PV"},
       {n:"Lodi",               lat:45.311,lon:9.502, q:87, p:"LO"},
       {n:"Cremona",            lat:45.133,lon:10.027,q:45, p:"CR"},
-      {n:"Mantova",            lat:45.157,lon:10.791,q:19, p:"MN"}
+      {n:"Mantova",            lat:45.157,lon:10.791,q:19, p:"MN"},
+      {n:"Guidizzolo",          lat:45.317,lon:10.582,q:64, p:"MN"},
+      {n:"Voghera",             lat:44.997,lon:9.007, q:106,p:"PV"},
+      {n:"Desenzano d'Garda",  lat:45.468,lon:10.537,q:67, p:"BS"},
+      {n:"Codogno",             lat:45.160,lon:9.704, q:72, p:"LO"},
+      {n:"Crema",               lat:45.363,lon:9.686, q:79, p:"CR"},
+      {n:"Sesto Calende",       lat:45.731,lon:8.638, q:197,p:"VA"},
+      {n:"Saronno",             lat:45.624,lon:9.040, q:212,p:"VA"},
+      {n:"Cantù",               lat:45.737,lon:9.128, q:370,p:"CO"},
+      {n:"Seriate",             lat:45.682,lon:9.727, q:213,p:"BG"},
+      {n:"Sarnico",             lat:45.679,lon:9.966, q:186,p:"BG"},
+      {n:"Palazzolo Oglio",     lat:45.598,lon:9.879, q:166,p:"BS"},
+      {n:"Iseo",                lat:45.659,lon:10.045,q:186,p:"BS"}
     ];
 
 // ═══════════════════════════════════════════════════════════════
@@ -577,7 +614,7 @@ function clearHeatmap(){
   gridPoints=[];
 }
 
-var GRID_RES=0.018, IDW_RAD=0.35;
+var GRID_RES=0.018, IDW_RAD=0.45;
 
 function pipGeo(lon,lat,ring){
   var inside=false,n=ring.length;
