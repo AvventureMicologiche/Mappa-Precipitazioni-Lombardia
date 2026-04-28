@@ -588,7 +588,34 @@ var LOMBARDIA_STATIONS=[
       {n:"Castiglione d.Stiviere",lat:45.384,lon:10.487,q:116,p:"MN"},
       {n:"Volta Mantovana",      lat:45.322,lon:10.662,q:138,p:"MN"},
       {n:"Canneto sull'Oglio",   lat:45.148,lon:10.376,q:43, p:"MN"},
-      {n:"Cavriana",             lat:45.356,lon:10.600,q:145,p:"MN"}
+      {n:"Cavriana",             lat:45.356,lon:10.600,q:145,p:"MN"},
+      {n:"Vigevano",             lat:45.318,lon:8.859, q:116,p:"PV"},
+      {n:"Mortara",              lat:45.252,lon:8.739, q:108,p:"PV"},
+      {n:"Stradella",            lat:45.083,lon:9.298, q:102,p:"PV"},
+      {n:"Broni",                lat:45.063,lon:9.263, q:88, p:"PV"},
+      {n:"Garlasco",             lat:45.199,lon:8.921, q:102,p:"PV"},
+      {n:"Mede",                 lat:45.098,lon:8.737, q:90, p:"PV"},
+      {n:"Belgioioso",           lat:45.163,lon:9.318, q:75, p:"PV"},
+      {n:"Siziano",              lat:45.312,lon:9.195, q:91, p:"PV"},
+      {n:"Cremona Po",           lat:45.128,lon:10.022,q:42, p:"CR"},
+      {n:"Casalmaggiore",        lat:44.987,lon:10.418,q:29, p:"CR"},
+      {n:"Soresina",             lat:45.289,lon:9.852, q:75, p:"CR"},
+      {n:"Sabbioneta",           lat:44.999,lon:10.499,q:22, p:"MN"},
+      {n:"Viadana",              lat:44.924,lon:10.519,q:22, p:"MN"},
+      {n:"Gonzaga",              lat:44.954,lon:10.828,q:19, p:"MN"},
+      {n:"Revere",               lat:45.053,lon:11.132,q:14, p:"MN"},
+      {n:"Sermide",              lat:45.000,lon:11.302,q:12, p:"MN"},
+      {n:"Quistello",            lat:45.011,lon:10.984,q:16, p:"MN"},
+      {n:"San Benedetto Po",     lat:45.037,lon:10.924,q:17, p:"MN"},
+      {n:"Pegognaga",            lat:44.996,lon:10.811,q:19, p:"MN"},
+      {n:"Mantova Nord",         lat:45.197,lon:10.762,q:20, p:"MN"},
+      {n:"Lodi Vecchio",         lat:45.305,lon:9.426, q:80, p:"LO"},
+      {n:"Sant Angelo Lod.",     lat:45.235,lon:9.415, q:74, p:"LO"},
+      {n:"Casalpusterlengo",     lat:45.178,lon:9.651, q:74, p:"LO"},
+      {n:"Paullo",               lat:45.420,lon:9.400, q:96, p:"MI"},
+      {n:"Melegnano",            lat:45.358,lon:9.323, q:88, p:"MI"},
+      {n:"Abbiategrasso",        lat:45.399,lon:8.917, q:120,p:"MI"},
+      {n:"Magenta",              lat:45.464,lon:8.879, q:141,p:"MI"}
     ];
 
 // ═══════════════════════════════════════════════════════════════
@@ -645,6 +672,7 @@ L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{
 // STATO
 // ═══════════════════════════════════════════════════════════════
 var currentRegion  = 'lombardia';
+var ARPA_STATIONS  = null; // popolato al caricamento da API ARPA
 var lombardiaRings = [];
 var regionRings    = {};   // cache GeoJSON per regione
 var regionBorder   = null; // layer Leaflet confine attivo
@@ -945,7 +973,7 @@ function loadARPALombardia(pastDate,nowDate,labelPeriodo){
     })
     .catch(function(e){
       console.warn('[ARPA] fallback Open-Meteo:',e.message);
-      loadOpenMeteo(LOMBARDIA_STATIONS,pastDate,nowDate,labelPeriodo,'🌍');
+      loadOpenMeteo(ARPA_STATIONS||LOMBARDIA_STATIONS,pastDate,nowDate,labelPeriodo,'🌍');
     });
 }
 
@@ -1266,71 +1294,71 @@ window.addEventListener('resize', function(){
 // AVVIO
 // ═══════════════════════════════════════════════════════════════
 setRegionBorder('lombardia',function(){
-  document.getElementById('loader').style.display='none';
-  // Mostra centraline di default al caricamento (senza heatmap)
-  loadDefaultMarkers();
-});
-
-function loadDefaultMarkers(){
-  // Carica e mostra i marker delle stazioni senza dati (0mm)
-  // così l'utente vede subito le centraline sulla mappa
+  // Prima carica l'elenco ufficiale stazioni ARPA, poi mostra la mappa
+  document.getElementById('lmsg').textContent='Caricamento stazioni ARPA…';
   var stUrl='https://www.dati.lombardia.it/resource/nf78-nj6b.json'
     +'?$limit=600&$select=idsensore,nomestazione,lat,lng,quota,provincia'
     +"&$where=tipologiasensore='Pioggia'";
   fetch(stUrl)
     .then(function(r){if(!r.ok)throw new Error('HTTP');return r.json();})
-    .then(function(stazioni){
-      var dati=[];
-      stazioni.forEach(function(s){
+    .then(function(data){
+      var stazioni=[];
+      data.forEach(function(s){
         var lat=parseFloat(s.lat),lon=parseFloat(s.lng);
-        if(!isNaN(lat)&&!isNaN(lon)&&lat>44&&lat<47&&lon>7&&lon<12)
-          dati.push({n:s.nomestazione||'—',lat:lat,lon:lon,q:s.quota||'—',p:s.provincia||'—',mm:0});
-      });
-      if(dati.length<5) throw new Error('pochi dati');
-      // Aggiunge marker senza attivare heatmap né aggiornare statistiche
-      var sorted=dati.slice();
-      dati.forEach(function(s){
-        var m=L.circleMarker([s.lat,s.lon],{
-          radius:5,fillColor:'#fff',fillOpacity:0.9,
-          color:'#333',weight:1.5,pane:'markerPane'
-        }).addTo(map);
-        activeMarkers.push(m);
-        function addDefaultEvents(m,s){
-          function showDef(cx,cy){
-            if(hideTimer)clearTimeout(hideTimer);
-            m.setStyle({radius:10,weight:2,color:'#000'});
-            document.getElementById('tt-nome').textContent=s.n;
-            document.getElementById('tt-mm').textContent='–';
-            document.getElementById('tt-prov').textContent=s.p;
-            document.getElementById('tt-quota').textContent=s.q+' m slm';
-            document.getElementById('tt-rank').textContent='seleziona un periodo';
-            document.getElementById('tt-fonte').textContent='ARPA Lombardia';
-            posTooltip(cx,cy);
-            tooltip.style.display='block';
-          }
-          m.on('mouseover',function(e){showDef(e.originalEvent.clientX,e.originalEvent.clientY);});
-          m.on('mousemove',function(e){posTooltip(e.originalEvent.clientX,e.originalEvent.clientY);});
-          m.on('mouseout',function(){m.setStyle({radius:5,weight:1.5,color:'#333'});hideTimer=setTimeout(hideTooltip,150);});
-          m.on('touchstart',function(e){
-            var t=e.originalEvent.touches[0];
-            showDef(t.clientX,t.clientY);
-            e.originalEvent.stopPropagation();
+        if(!isNaN(lat)&&!isNaN(lon)&&lat>44&&lat<47&&lon>7&&lon<12){
+          stazioni.push({
+            n:s.nomestazione||'—',
+            lat:lat,lon:lon,
+            q:parseInt(s.quota)||0,
+            p:s.provincia||'—'
           });
-          m.on('touchend',function(e){e.originalEvent.stopPropagation();});
         }
-        addDefaultEvents(m,s);
       });
+      if(stazioni.length>=5){
+        ARPA_STATIONS=stazioni;
+        console.log('[ARPA] Stazioni caricate:',stazioni.length);
+      } else {
+        throw new Error('poche stazioni');
+      }
     })
-    .catch(function(){
-      LOMBARDIA_STATIONS.forEach(function(s){
-        var m=L.circleMarker([s.lat,s.lon],{
-          radius:5,fillColor:'#fff',fillOpacity:0.9,
-          color:'#333',weight:1.5,pane:'markerPane'
-        }).addTo(map);
-        activeMarkers.push(m);
-        addDefaultEvents(m,s);
-      });
+    .catch(function(e){
+      console.warn('[ARPA] Stazioni fallback:',e.message);
+      ARPA_STATIONS=LOMBARDIA_STATIONS;
+    })
+    .finally(function(){
+      document.getElementById('loader').style.display='none';
+      loadDefaultMarkers();
     });
+});
+
+function loadDefaultMarkers(){
+  var stazioni=ARPA_STATIONS||LOMBARDIA_STATIONS;
+  stazioni.forEach(function(s){
+    var m=L.circleMarker([s.lat,s.lon],{
+      radius:5,fillColor:'#fff',fillOpacity:0.9,
+      color:'#333',weight:1.5,pane:'markerPane'
+    }).addTo(map);
+    activeMarkers.push(m);
+    (function(mk,st){
+      function showDef(cx,cy){
+        if(hideTimer)clearTimeout(hideTimer);
+        mk.setStyle({radius:10,weight:2,color:'#000'});
+        document.getElementById('tt-nome').textContent=st.n;
+        document.getElementById('tt-mm').textContent='–';
+        document.getElementById('tt-prov').textContent=st.p;
+        document.getElementById('tt-quota').textContent=st.q+' m slm';
+        document.getElementById('tt-rank').textContent='seleziona un periodo';
+        document.getElementById('tt-fonte').textContent='ARPA Lombardia';
+        posTooltip(cx,cy);
+        tooltip.style.display='block';
+      }
+      mk.on('mouseover',function(e){showDef(e.originalEvent.clientX,e.originalEvent.clientY);});
+      mk.on('mousemove',function(e){posTooltip(e.originalEvent.clientX,e.originalEvent.clientY);});
+      mk.on('mouseout',function(){mk.setStyle({radius:5,weight:1.5,color:'#333'});hideTimer=setTimeout(hideTooltip,150);});
+      mk.on('touchstart',function(e){var t=e.originalEvent.touches[0];showDef(t.clientX,t.clientY);e.originalEvent.stopPropagation();});
+      mk.on('touchend',function(e){e.originalEvent.stopPropagation();});
+    }(m,s));
+  });
 }
 
 }());
