@@ -622,8 +622,19 @@ function col(mm){var c=mmToRGB(mm);return'rgb('+c[0]+','+c[1]+','+c[2]+')';}
 // MAPPA
 // ═══════════════════════════════════════════════════════════════
 var screenW=window.innerWidth;
-var initZoom = screenW<=480 ? 6 : screenW<=900 ? 7 : 8;
-var map=L.map('map').setView([45.65,9.85], initZoom);
+var screenH=window.innerHeight;
+// Su mobile la mappa occupa solo ~45% dello schermo in altezza
+// Zoom adattivo per far vedere la Lombardia intera nella porzione visibile
+var initZoom;
+if(screenW<=480){
+  // Pixel/Android piccoli — mappa 45vh, serve zoom 8 per riempirla
+  initZoom = screenH>=750 ? 8 : 7;
+} else if(screenW<=900){
+  initZoom = 7;
+} else {
+  initZoom = 8;
+}
+var map=L.map('map').setView([45.55,9.85], initZoom);
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{
   maxZoom:19,subdomains:'abc',
   attribution:'© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors | ARPA Lombardia'
