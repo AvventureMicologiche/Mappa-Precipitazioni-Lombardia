@@ -9,7 +9,7 @@
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 html,body{height:100%;font-family:'Segoe UI',Arial,sans-serif}
-body{display:flex;flex-direction:column;height:100%;overflow:hidden;}
+body{display:flex;flex-direction:column;height:100%;}
 
 /* ── Header ── */
 header{
@@ -30,13 +30,13 @@ h1{font-size:13px;font-weight:600;white-space:nowrap}
 
 /* ── Map ── */
 #map-wrap{flex:1;position:relative;overflow:hidden;}
-#map{width:100%;height:100%;}
+#map{width:100%;height:100%;position:relative;}
 
 /* ══════════════════════════════════════════════
    LAYOUT WRAPPER
    ══════════════════════════════════════════════ */
 #map-wrap{flex:1;position:relative;overflow:hidden;}
-#map{width:100%;height:100%;}
+#map{width:100%;height:100%;position:relative;}
 
 /* ══════════════════════════════════════════════
    PANNELLI — BASE DESKTOP (sovrapposti alla mappa)
@@ -102,57 +102,81 @@ h1{font-size:13px;font-weight:600;white-space:nowrap}
 .sl{font-size:7px;color:#bbb;text-transform:uppercase;margin-top:2px}
 
 /* ══════════════════════════════════════════════
-   MOBILE (≤600px) — pannelli SOTTO la mappa
+   MOBILE (≤600px)
    ══════════════════════════════════════════════ */
 @media(max-width:600px){
+  /* Mappa occupa tutto lo schermo */
+  #map-wrap,#map{position:fixed;top:0;left:0;right:0;bottom:0;
+    width:100%;height:100%;z-index:1;}
+  body{overflow:hidden;}
+  header{position:fixed;top:0;left:0;right:0;z-index:600;height:46px;}
 
-  /* Il wrapper non è più flex:1 ma lascia spazio ai pannelli */
-  #map-wrap{
-    flex:1;
-    min-height:0;
-    /* su mobile la mappa occupa lo spazio disponibile */
-  }
-
-  /* Pannelli: NON sovrapposti, ma nel flusso normale sotto la mappa */
-  #time-panel,#legend-panel{
-    position:static !important;
+  /* Pannelli: compatti, sovrapposti in basso */
+  #time-panel{
+    position:fixed !important;
+    bottom:0;left:0;right:0;top:auto !important;
     width:100% !important;
-    border-radius:0 !important;
-    box-shadow:0 -2px 8px rgba(0,0,0,.12) !important;
-    left:auto !important;top:auto !important;
-    border-top:1px solid #e8eaf0;
+    border-radius:14px 14px 0 0 !important;
+    box-shadow:0 -3px 20px rgba(0,0,0,.2) !important;
+    padding:8px 14px 16px !important;
+    z-index:2000 !important;
+    max-height:60vh;
+    overflow-y:auto;
+    /* Nascondi di default, mostra con classe .open */
+    transform:translateY(calc(100% - 42px));
+    transition:transform .3s ease;
   }
-  #time-panel{padding:10px 14px 8px;}
-  #legend-panel{padding:8px 14px 10px;}
+  #time-panel.open{transform:translateY(0);}
 
-  /* Body diventa scroll verticale */
-  body{overflow-y:auto;height:auto;min-height:100%;}
-  #map-wrap{height:45vh;flex:none;}
+  /* Handle bar visibile */
+  #time-panel::before{
+    content:'';display:block;
+    width:40px;height:4px;background:#ccc;border-radius:2px;
+    margin:0 auto 8px;
+  }
 
-  /* Pulsanti più grandi al tocco */
-  .tp-btn{padding:9px 2px;font-size:13px;}
-  .tp-grid5{gap:5px;margin-bottom:5px;}
-  .tp-grid4{gap:5px;margin-bottom:5px;}
-  .tp-custom-btn{padding:9px;font-size:13px;margin-top:5px;}
+  #legend-panel{
+    position:fixed !important;
+    bottom:0;left:0;right:0;top:auto !important;
+    width:100% !important;
+    border-radius:14px 14px 0 0 !important;
+    box-shadow:0 -3px 20px rgba(0,0,0,.2) !important;
+    padding:10px 14px 16px !important;
+    z-index:1999 !important;
+    transform:translateY(calc(100% - 0px));
+    /* la legenda appare sopra il time-panel quando è collassato */
+  }
+  #legend-panel.visible{
+    transform:translateY(-44px); /* 44px = altezza handle del time-panel */
+  }
 
-  /* Stats */
-  .sv{font-size:19px;}
+  /* Pulsanti tocco-friendly */
+  .tp-btn{padding:10px 2px;font-size:14px;border-radius:7px;}
+  .tp-grid5,.tp-grid4{gap:6px;margin-bottom:6px;}
+  .tp-custom-btn{padding:10px;font-size:13px;margin-top:5px;}
+  .tp-title{font-size:12px;margin-bottom:8px;}
+
+  /* Stats legenda */
+  .sv{font-size:20px;}
   .sl{font-size:9px;}
   .grad{height:14px;}
-  .grad-l{font-size:10px;}
-  .leg-title{font-size:11px;margin-bottom:5px;}
+  .grad-l{font-size:10px;margin-bottom:6px;}
+  .leg-title{font-size:11px;margin-bottom:6px;}
+  .stats-row{gap:6px;}
+  .stat{padding:7px 4px;}
 
-  /* Tooltip: appare in alto */
+  /* Tooltip mobile */
   #st-tooltip{
-    position:fixed;top:50px;left:8px;right:8px;
-    bottom:auto;min-width:0;width:auto;z-index:3000;
+    position:fixed;top:52px;left:8px;right:8px;
+    bottom:auto;min-width:0;z-index:3000;
+    font-size:12px;
   }
+  .tt-mm{font-size:18px;}
 
-  /* fonte tag: dentro la mappa in alto */
-  .fonte-tag{top:4px;bottom:auto;font-size:8px;}
-  .fonte{font-size:8px;padding:3px 8px;}
-  h1{font-size:12px;}
-  .hdr-sub{font-size:8px;}
+  /* Nascondi footer */
+  .fonte{display:none;}
+  .fonte-tag{top:52px;bottom:auto;font-size:8px;}
+  h1{font-size:13px;}
 }
 
 /* ══════════════════════════════════════════════
@@ -737,14 +761,17 @@ function render(dati,fonte,labelPeriodo){
 }
 
 function positionLegend(){
-  // Su mobile i pannelli sono statici (CSS), non serve posizionamento JS
-  if(window.innerWidth<=600) return;
+  var leg=document.getElementById('legend-panel');
+  if(window.innerWidth<=600){
+    // Mobile: legenda appare sopra il pannello periodo collassato
+    leg.classList.add('visible');
+    return;
+  }
   // Desktop: posiziona legenda sotto il pannello periodo
   var tp=document.getElementById('time-panel');
   var tpB=tp.getBoundingClientRect().bottom;
   var mapWrap=document.getElementById('map-wrap');
   var mapT=mapWrap.getBoundingClientRect().top;
-  var leg=document.getElementById('legend-panel');
   leg.style.top=(tpB-mapT+10)+'px';
   leg.style.left='10px';
   leg.style.width='280px';
@@ -1079,6 +1106,43 @@ document.getElementById('cd-apply').addEventListener('click',function(){
 window.addEventListener('resize', function(){
   if(document.getElementById('legend-panel').style.display!=='none') positionLegend();
 });
+
+// ── Toggle mobile: tap sul handle apre/chiude il pannello ──────────────
+(function(){
+  var tp=document.getElementById('time-panel');
+  if(!tp) return;
+  // Apri automaticamente il pannello periodo su mobile
+  function isMobile(){return window.innerWidth<=600;}
+  
+  // Tap sul title o handle apre/chiude
+  var tpTitle=tp.querySelector('.tp-title');
+  if(tpTitle){
+    tpTitle.style.cursor='pointer';
+    tpTitle.addEventListener('click',function(){
+      if(!isMobile()) return;
+      tp.classList.toggle('open');
+    });
+  }
+  // Tap sull'handle (::before pseudo-element non è cliccabile, usiamo il padding top)
+  tp.addEventListener('click',function(e){
+    if(!isMobile()) return;
+    // Clicca nella zona handle (primi 20px)
+    var rect=tp.getBoundingClientRect();
+    if(e.clientY - rect.top < 20){
+      tp.classList.toggle('open');
+    }
+  });
+  
+  // Su mobile apri il pannello all'avvio dopo il caricamento
+  function openOnMobile(){
+    if(isMobile()) tp.classList.add('open');
+  }
+  window.addEventListener('resize', function(){
+    if(!isMobile()) tp.classList.remove('open');
+  });
+  // Aperto di default su mobile
+  setTimeout(openOnMobile, 100);
+}());
 
 // ═══════════════════════════════════════════════════════════════
 // AVVIO
