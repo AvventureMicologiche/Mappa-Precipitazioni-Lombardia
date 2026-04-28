@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Precipitazioni Nord Italia</title>
+<title>Precipitazioni Lombardia</title>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <style>
@@ -22,16 +22,7 @@ header{
 h1{font-size:13px;font-weight:600;white-space:nowrap}
 .hdr-sub{font-size:9px;opacity:.6;white-space:nowrap}
 
-/* Selettore regione */
-#region-tabs{display:flex;gap:3px;flex:1;justify-content:center}
-.rtab{
-  padding:5px 12px;border-radius:16px;font-size:11px;font-weight:600;
-  cursor:pointer;border:1px solid rgba(255,255,255,.25);
-  color:rgba(255,255,255,.7);background:transparent;
-  transition:all .15s;white-space:nowrap;
-}
-.rtab:hover{background:rgba(255,255,255,.12);color:#fff}
-.rtab.active{background:#fff;color:#1b3f6e;border-color:#fff}
+
 
 #badge{font-size:9px;padding:2px 8px;border-radius:10px;
   background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.2);
@@ -155,15 +146,9 @@ h1{font-size:13px;font-weight:600;white-space:nowrap}
   <div class="hdr-l">
     <span style="font-size:18px">🌧</span>
     <div>
-      <h1>Precipitazioni Nord Italia</h1>
+      <h1>Precipitazioni Lombardia</h1>
       <div class="hdr-sub" id="datehdr">Seleziona regione e periodo</div>
     </div>
-  </div>
-  <div id="region-tabs">
-    <div class="rtab active" data-region="lombardia">Lombardia</div>
-    <div class="rtab" data-region="piemonte">Piemonte</div>
-    <div class="rtab" data-region="liguria">Liguria</div>
-    <div class="rtab" data-region="emilia">Emilia-R.</div>
   </div>
   <div id="badge">–</div>
 </header>
@@ -767,56 +752,82 @@ function loadOpenMeteo(stations,pastDate,nowDate,labelPeriodo,badgePrefix){
     var needsForecast=nowDate>fiveDaysAgo;
     var url;
 
-    if(!useArchive||needsForecast){
-      // Forecast API: supporta past_days fino a 92
-      var pastDays=Math.min(92,Math.max(1,Math.ceil(msRange/(24*3600000))+1));
-      url='https://api.open-meteo.com/v1/forecast'
+    // Strategia URL Open-Meteo:
+    // - Forecast API: max 92 past_days, include dati recenti
+    // - Archive API: dati storici senza limite, ma ritardo ~5gg
+    // - Per periodi > 92gg che includono date recenti: archive + forecast combinati
+    var today=new Date();
+    var cutoff=new Date(today.getTime()-6*24*3600000); // 6gg fa = limite sicuro archive
+    var days=Math.ceil(msRange/(24*3600000));
+    var urls=[];
+
+    if(days<=92){
+      // Tutto in forecast
+      urls.push('https://api.open-meteo.com/v1/forecast'
         +'?latitude='+lats+'&longitude='+lons
         +'&daily=precipitation_sum&timezone=Europe%2FRome'
-        +'&past_days='+pastDays+'&forecast_days=0';
-    } else {
-      // Archive API per periodi storici (> 7gg fa)
-      url='https://archive-api.open-meteo.com/v1/archive'
+        +'&past_days='+days+'&forecast_days=0');
+    } else if(nowDate<=cutoff){
+      // Tutto storico → archive
+      urls.push('https://archive-api.open-meteo.com/v1/archive'
         +'?latitude='+lats+'&longitude='+lons
         +'&start_date='+startDate+'&end_date='+endDate
-        +'&daily=precipitation_sum&timezone=Europe%2FRome';
+        +'&daily=precipitation_sum&timezone=Europe%2FRome');
+    } else {
+      // Periodo lungo che include date recenti: archive fino a 6gg fa + forecast per ultimi 6gg
+      var archiveEnd=fmtDate(cutoff);
+      urls.push('https://archive-api.open-meteo.com/v1/archive'
+        +'?latitude='+lats+'&longitude='+lons
+        +'&start_date='+startDate+'&end_date='+archiveEnd
+        +'&daily=precipitation_sum&timezone=Europe%2FRome');
+      urls.push('https://api.open-meteo.com/v1/forecast'
+        +'?latitude='+lats+'&longitude='+lons
+        +'&daily=precipitation_sum&timezone=Europe%2FRome'
+        +'&past_days=6&forecast_days=0');
     }
 
-    console.log('[OpenMeteo] URL:', url.substring(0,120));
+    var startStr=fmtDate(pastDate);
+    var endStr=fmtDate(nowDate);
 
-    fetch(url)
-      .then(function(r){if(!r.ok)throw new Error('OM HTTP '+r.status);return r.json();})
-      .then(function(data){
-        // data può essere array (multi-location) o oggetto singolo
-        var arr=Array.isArray(data)?data:[data];
-        arr.forEach(function(loc,idx){
-          var st=batch[idx];
-          if(!st) return;
-          // Usa daily.precipitation_sum
-          var daily=loc.daily;
-          if(!daily||!daily.time){results[st.n]=0;return;}
-          var times=daily.time;              // array di 'YYYY-MM-DD'
-          var precip=daily.precipitation_sum;
-          // Filtra solo i giorni nel range selezionato
-          var startStr=fmtDate(pastDate);
-          var endStr=fmtDate(nowDate);
-          var total=0;
-          for(var i=0;i<times.length;i++){
-            if(times[i]>=startStr&&times[i]<=endStr){
-              var v=parseFloat(precip[i]);
-              if(!isNaN(v)&&v>0) total+=v;
-            }
+    function processOMResponse(data,accumulator){
+      var arr=Array.isArray(data)?data:[data];
+      arr.forEach(function(loc,idx){
+        var st=batch[idx];
+        if(!st) return;
+        var daily=loc.daily;
+        if(!daily||!daily.time) return;
+        var times=daily.time;
+        var precip=daily.precipitation_sum;
+        for(var i=0;i<times.length;i++){
+          if(times[i]>=startStr&&times[i]<=endStr){
+            var v=parseFloat(precip[i]);
+            if(!isNaN(v)&&v>0) accumulator[st.n]=(accumulator[st.n]||0)+v;
           }
-          results[st.n]=total<0.5?0:Math.round(total*10)/10;
-          console.log('[OpenMeteo]',st.n,'=',results[st.n],'mm ('+startStr+'→'+endStr+')');
-        });
-        onBatchDone();
-      })
-      .catch(function(e){
-        console.warn('Open-Meteo batch error:',e.message);
-        batch.forEach(function(s){results[s.n]=0;});
-        onBatchDone();
+        }
       });
+    }
+
+    // Esegui le fetch in sequenza e accumula
+    var acc={};
+    urls.reduce(function(chain,url){
+      return chain.then(function(){
+        return fetch(url)
+          .then(function(r){if(!r.ok)throw new Error('OM '+r.status);return r.json();})
+          .then(function(data){processOMResponse(data,acc);});
+      });
+    }, Promise.resolve())
+    .then(function(){
+      batch.forEach(function(st){
+        var total=acc[st.n]||0;
+        results[st.n]=total<0.5?0:Math.round(total*10)/10;
+      });
+      onBatchDone();
+    })
+    .catch(function(e){
+      console.warn('Open-Meteo batch error:',e.message);
+      batch.forEach(function(s){results[s.n]=0;});
+      onBatchDone();
+    });
   });
 }
 
