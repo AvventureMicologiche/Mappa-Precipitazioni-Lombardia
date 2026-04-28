@@ -730,6 +730,8 @@ function drawGrid(){
   if(!cvs||!heatCtx||gridPoints.length===0) return;
   var size=map.getSize();
   cvs.width=size.x; cvs.height=size.y;
+  // Resetta transform e ricalcola posizione corretta
+  cvs.style.transform='';
   var tl=map.containerPointToLayerPoint([0,0]);
   cvs.style.transform='translate('+tl.x+'px,'+tl.y+'px)';
   heatCtx.clearRect(0,0,size.x,size.y);
@@ -755,11 +757,26 @@ function drawGrid(){
   cvs.style.opacity='1';
 }
 
-map.on('move',function(){if(!cvs||gridPoints.length===0)return;var tl=map.containerPointToLayerPoint([0,0]);cvs.style.transform='translate('+tl.x+'px,'+tl.y+'px)';});
-map.on('movestart',function(){if(cvs&&gridPoints.length>0)cvs.style.opacity='0.4';});
-map.on('moveend',function(){if(gridPoints.length===0)return;if(drawTimer)clearTimeout(drawTimer);drawTimer=setTimeout(drawGrid,80);});
-map.on('zoomstart',function(){if(cvs)cvs.style.opacity='0';});
-map.on('zoomend',function(){if(gridPoints.length===0)return;if(drawTimer)clearTimeout(drawTimer);drawTimer=setTimeout(drawGrid,100);});
+map.on('move',function(){
+  // Durante il pan: nascondi il canvas invece di spostarlo
+  // evita il disallineamento visivo durante il trascinamento
+  if(!cvs||gridPoints.length===0) return;
+  cvs.style.opacity='0';
+});
+map.on('movestart',function(){
+  if(cvs&&gridPoints.length>0) cvs.style.opacity='0';
+});
+map.on('moveend',function(){
+  if(gridPoints.length===0) return;
+  if(drawTimer) clearTimeout(drawTimer);
+  drawTimer=setTimeout(drawGrid,80);
+});
+map.on('zoomstart',function(){if(cvs) cvs.style.opacity='0';});
+map.on('zoomend',function(){
+  if(gridPoints.length===0) return;
+  if(drawTimer) clearTimeout(drawTimer);
+  drawTimer=setTimeout(drawGrid,100);
+});
 
 // ═══════════════════════════════════════════════════════════════
 // TOOLTIP
