@@ -31,13 +31,18 @@ h1{font-size:13px;font-weight:600;white-space:nowrap}
 /* ── Map ── */
 #map{flex:1;position:relative}
 
-/* ── Pannello periodo ── */
-#time-panel{
-  position:absolute;top:130px;left:10px;z-index:1000;
+/* ══════════════════════════════════════════════
+   PANNELLI — BASE (desktop: posizione assoluta)
+   ══════════════════════════════════════════════ */
+#time-panel,#legend-panel{
+  position:absolute;left:10px;z-index:1000;
   background:rgba(255,255,255,.96);border-radius:10px;
-  padding:11px 13px;box-shadow:0 2px 12px rgba(0,0,0,.22);
-  width:280px;pointer-events:all;
+  box-shadow:0 2px 12px rgba(0,0,0,.22);
+  pointer-events:all;width:280px;
 }
+#time-panel{top:130px;padding:11px 13px;}
+#legend-panel{padding:11px 14px;display:none;}
+
 .tp-title{font-size:11px;font-weight:700;color:#1b3f6e;
   text-transform:uppercase;letter-spacing:.07em;margin-bottom:9px;
   display:flex;align-items:center;gap:5px}
@@ -75,12 +80,6 @@ h1{font-size:13px;font-weight:600;white-space:nowrap}
 .cd-go:hover{background:#14305a}
 
 /* ── Legenda ── */
-#legend-panel{
-  position:absolute;top:130px;left:10px;z-index:1000;
-  background:rgba(255,255,255,.96);border-radius:10px;
-  padding:11px 14px;box-shadow:0 2px 12px rgba(0,0,0,.22);
-  width:280px;pointer-events:all;display:none;
-}
 .leg-title{font-size:10px;font-weight:700;color:#777;
   text-transform:uppercase;letter-spacing:.07em;margin-bottom:7px}
 .grad{height:13px;border-radius:4px;margin-bottom:4px;
@@ -94,6 +93,89 @@ h1{font-size:13px;font-weight:600;white-space:nowrap}
 .stat{background:#f0f4fb;border-radius:5px;padding:5px 4px;text-align:center}
 .sv{font-size:17px;font-weight:700;color:#1b3f6e;line-height:1}
 .sl{font-size:7px;color:#bbb;text-transform:uppercase;margin-top:2px}
+
+/* ══════════════════════════════════════════════
+   MOBILE (≤600px): bottom sheet scorrevole
+   ══════════════════════════════════════════════ */
+@media(max-width:600px){
+  /* Pannelli diventano bottom sheet fisso */
+  #time-panel,#legend-panel{
+    position:fixed;
+    left:0;right:0;bottom:0;
+    width:100%;
+    border-radius:16px 16px 0 0;
+    box-shadow:0 -4px 24px rgba(0,0,0,.18);
+    z-index:2000;
+    padding:12px 16px 20px;
+    max-height:55vh;
+    overflow-y:auto;
+    -webkit-overflow-scrolling:touch;
+  }
+  #time-panel{
+    top:auto;
+    /* handle bar */
+    padding-top:20px;
+  }
+  #time-panel::before{
+    content:'';
+    display:block;
+    width:36px;height:4px;
+    background:#ccc;border-radius:2px;
+    margin:-10px auto 12px;
+  }
+  /* Legenda: posizionata sopra il time-panel (con spazio) */
+  #legend-panel{
+    bottom:auto;
+    top:auto;
+    /* viene posizionata via JS su mobile */
+    position:fixed;
+    left:0;right:0;
+    border-radius:0;
+    border-bottom:1px solid #eee;
+    max-height:30vh;
+    z-index:1999;
+  }
+
+  /* Pulsanti più grandi al tocco */
+  .tp-btn{padding:10px 2px;font-size:13px;}
+  .tp-grid5{gap:5px;margin-bottom:6px;}
+  .tp-grid4{gap:5px;margin-bottom:6px;}
+  .tp-custom-btn{padding:10px;font-size:13px;}
+
+  /* Statistiche più grandi */
+  .sv{font-size:20px;}
+  .sl{font-size:9px;}
+  .grad{height:16px;}
+  .grad-l{font-size:10px;}
+  .leg-title{font-size:12px;}
+
+  /* Tooltip: full width in basso */
+  #st-tooltip{
+    position:fixed;
+    left:8px;right:8px;bottom:auto;
+    top:56px;
+    min-width:0;
+    width:auto;
+  }
+
+  /* Nascondi fonte in basso su mobile */
+  .fonte{display:none;}
+  .fonte-tag{bottom:auto;top:56px;font-size:8px;}
+
+  /* Header più compatto */
+  h1{font-size:12px;}
+  .hdr-sub{display:none;}
+}
+
+/* ══════════════════════════════════════════════
+   TABLET (601px–900px): pannelli più piccoli
+   ══════════════════════════════════════════════ */
+@media(min-width:601px) and (max-width:900px){
+  #time-panel{width:240px;top:90px;}
+  #legend-panel{width:240px;}
+  .tp-btn{font-size:11px;padding:5px 2px;}
+  .sv{font-size:15px;}
+}
 
 /* ── Tooltip ── */
 #st-tooltip{
@@ -211,7 +293,7 @@ h1{font-size:13px;font-weight:600;white-space:nowrap}
 
 <div class="fonte">
   Dati: <a href="https://www.dati.lombardia.it" target="_blank">ARPA Lombardia</a> ·
-  <a href="https://open-meteo.com" target="_blank">Open-Meteo</a> (Piemonte/Liguria/Emilia) &nbsp;|&nbsp;
+  <a href="https://open-meteo.com" target="_blank">Open-Meteo</a> &nbsp;|&nbsp;
   Mappa: <a href="https://www.openstreetmap.org/copyright" target="_blank">© OpenStreetMap</a>
 </div>
 
@@ -665,11 +747,28 @@ function render(dati,fonte,labelPeriodo){
 }
 
 function positionLegend(){
-  var tp=document.getElementById('time-panel');
-  var tpB=tp.getBoundingClientRect().bottom;
-  var mapT=mapEl.getBoundingClientRect().top;
-  document.getElementById('legend-panel').style.top=(tpB-mapT+10)+'px';
-  document.getElementById('legend-panel').style.left='10px';
+  var isMobile=window.innerWidth<=600;
+  var leg=document.getElementById('legend-panel');
+  if(isMobile){
+    // Su mobile: legenda fissa in alto sotto l'header
+    leg.style.top='46px';
+    leg.style.bottom='auto';
+    leg.style.left='0';
+    leg.style.right='0';
+    leg.style.borderRadius='0';
+    leg.style.width='100%';
+  } else {
+    // Desktop: sotto il pannello periodo
+    var tp=document.getElementById('time-panel');
+    var tpB=tp.getBoundingClientRect().bottom;
+    var mapT=mapEl.getBoundingClientRect().top;
+    leg.style.top=(tpB-mapT+10)+'px';
+    leg.style.left='10px';
+    leg.style.right='auto';
+    leg.style.bottom='auto';
+    leg.style.borderRadius='10px';
+    leg.style.width='280px';
+  }
 }
 
 function setLoading(on){
@@ -994,6 +1093,11 @@ document.getElementById('cd-apply').addEventListener('click',function(){
   var label=d(pastDate)+' → '+d(nowDate);
   setActiveBtn(document.getElementById('btn-custom'));
   loadData(pastDate,nowDate,label);
+});
+
+// Ricalcola posizione su resize
+window.addEventListener('resize', function(){
+  if(document.getElementById('legend-panel').style.display!=='none') positionLegend();
 });
 
 // ═══════════════════════════════════════════════════════════════
