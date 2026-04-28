@@ -269,18 +269,18 @@ h1{font-size:13px;font-weight:600;white-space:nowrap}
     <a href="https://www.youtube.com/@avventuremicologiche" target="_blank"
        style="position:absolute;bottom:30px;right:12px;z-index:1000;
               display:flex;flex-direction:row;align-items:center;gap:12px;
-              background:rgba(255,255,255,.82);border-radius:8px;
-              padding:10px 20px 10px 14px;text-decoration:none;opacity:0.9;
-              transition:opacity .2s;box-shadow:0 1px 6px rgba(0,0,0,.15);"
-       onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=0.9"
+              background:rgba(255,255,255,.50);border-radius:8px;
+              padding:10px 20px 10px 14px;text-decoration:none;opacity:0.75;
+              transition:opacity .2s;box-shadow:0 1px 6px rgba(0,0,0,.12);"
+       onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=0.75"
        id="channel-logo">
-      <svg width="44" height="31" viewBox="0 0 44 31" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <rect width="44" height="31" rx="6" fill="#FF0000"/>
-        <polygon points="17,7 17,24 32,15" fill="white"/>
+      <svg width="52" height="37" viewBox="0 0 52 37" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <rect width="52" height="37" rx="7" fill="#FF0000"/>
+        <polygon points="20,8 20,29 38,18" fill="white"/>
       </svg>
-      <div style="display:flex;flex-direction:column;line-height:1.25;">
-        <span style="font-size:18px;font-weight:700;color:#111;font-family:'Segoe UI',Arial,sans-serif;">Avventure</span>
-        <span style="font-size:18px;font-weight:700;color:#111;font-family:'Segoe UI',Arial,sans-serif;">Micologiche</span>
+      <div style="display:flex;flex-direction:column;align-items:center;line-height:1.25;">
+        <span style="font-size:29px;font-weight:700;color:#111;font-family:'Segoe UI',Arial,sans-serif;">Avventure</span>
+        <span style="font-size:29px;font-weight:700;color:#111;font-family:'Segoe UI',Arial,sans-serif;">Micologiche</span>
       </div>
     </a>
 
@@ -624,9 +624,9 @@ function col(mm){var c=mmToRGB(mm);return'rgb('+c[0]+','+c[1]+','+c[2]+')';}
 var screenW=window.innerWidth;
 var initZoom = screenW<=480 ? 6 : screenW<=900 ? 7 : 8;
 var map=L.map('map').setView([45.65,9.85], initZoom);
-L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',{
-  maxZoom:19,subdomains:'abcd',
-  attribution:'© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors © <a href="https://carto.com/attributions">CARTO</a>'
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{
+  maxZoom:19,subdomains:'abc',
+  attribution:'© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors | ARPA Lombardia'
 }).addTo(map);
 
 // ═══════════════════════════════════════════════════════════════
@@ -1229,6 +1229,6 @@ setRegionBorder('lombardia',function(){
 });
 
 }());
-</script> 
+</script>
 </body>
-</html> 
+</html>
