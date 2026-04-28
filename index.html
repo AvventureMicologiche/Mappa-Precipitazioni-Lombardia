@@ -36,17 +36,17 @@ h1{font-size:13px;font-weight:600;white-space:nowrap}
   position:absolute;top:130px;left:10px;z-index:1000;
   background:rgba(255,255,255,.96);border-radius:10px;
   padding:11px 13px;box-shadow:0 2px 12px rgba(0,0,0,.22);
-  width:230px;pointer-events:all;
+  width:280px;pointer-events:all;
 }
-.tp-title{font-size:11px;font-weight:700;color:#1b3f6e;
+.tp-title{font-size:13px;font-weight:700;color:#1b3f6e;
   text-transform:uppercase;letter-spacing:.07em;margin-bottom:9px;
   display:flex;align-items:center;gap:5px}
 .tp-grid5{display:grid;grid-template-columns:repeat(5,1fr);gap:4px;margin-bottom:4px}
 .tp-grid4{display:grid;grid-template-columns:repeat(4,1fr);gap:4px;margin-bottom:4px}
 .tp-btn{
   background:#f0f4fb;border:1px solid #d0d8e8;border-radius:5px;
-  font-size:12px;font-weight:600;color:#1b3f6e;
-  padding:6px 2px;text-align:center;cursor:pointer;
+  font-size:13px;font-weight:600;color:#1b3f6e;
+  padding:7px 3px;text-align:center;cursor:pointer;
   transition:background .12s;user-select:none;
 }
 .tp-btn:hover{background:#dde8ff;border-color:#90b0d8}
@@ -54,12 +54,12 @@ h1{font-size:13px;font-weight:600;white-space:nowrap}
 .tp-custom-btn{
   width:100%;margin-top:4px;padding:6px;
   background:#f0f4fb;border:1px solid #d0d8e8;border-radius:5px;
-  font-size:11px;font-weight:600;color:#1b3f6e;cursor:pointer;
+  font-size:13px;font-weight:600;color:#1b3f6e;cursor:pointer;
   text-align:center;transition:background .12s;
 }
 .tp-custom-btn:hover{background:#dde8ff}
 .tp-custom-btn.active{background:#1b3f6e;color:#fff}
-#tp-status{font-size:10px;color:#1b6e3f;font-weight:600;margin-top:6px;min-height:14px}
+#tp-status{font-size:12px;color:#1b6e3f;font-weight:600;margin-top:6px;min-height:14px}
 #tp-spinner{display:none;align-items:center;gap:6px;margin-top:6px;font-size:10px;color:#888}
 .mini-spin{width:12px;height:12px;border:2px solid #dde;border-top-color:#1b3f6e;
   border-radius:50%;animation:spin .6s linear infinite;flex-shrink:0}
@@ -79,21 +79,21 @@ h1{font-size:13px;font-weight:600;white-space:nowrap}
   position:absolute;top:130px;left:10px;z-index:1000;
   background:rgba(255,255,255,.96);border-radius:10px;
   padding:11px 14px;box-shadow:0 2px 12px rgba(0,0,0,.22);
-  width:230px;pointer-events:all;display:none;
+  width:280px;pointer-events:all;display:none;
 }
-.leg-title{font-size:10px;font-weight:700;color:#777;
+.leg-title{font-size:13px;font-weight:700;color:#777;
   text-transform:uppercase;letter-spacing:.07em;margin-bottom:7px}
-.grad{height:13px;border-radius:4px;margin-bottom:4px;
+.grad{height:15px;border-radius:4px;margin-bottom:4px;
   background:linear-gradient(to right,
     #ffffff 0%,#e8e0f8 2%,#c8b8f0 5%,#a090e8 8%,#7878e0 12%,
     #5060d8 17%,#2848d0 23%,#1090e0 30%,#00c8c8 38%,#00d870 46%,
     #80e800 54%,#f8f000 62%,#f8b800 68%,#f87000 74%,
     #f83000 80%,#c80000 85%,#e000a0 90%,#f060c0 95%,#ffc0e0 100%)}
-.grad-l{display:flex;justify-content:space-between;font-size:9px;color:#aaa;margin-bottom:8px}
+.grad-l{display:flex;justify-content:space-between;font-size:11px;color:#aaa;margin-bottom:8px}
 .stats-row{display:grid;grid-template-columns:repeat(4,1fr);gap:4px}
 .stat{background:#f0f4fb;border-radius:5px;padding:5px 4px;text-align:center}
-.sv{font-size:17px;font-weight:700;color:#1b3f6e;line-height:1}
-.sl{font-size:7px;color:#bbb;text-transform:uppercase;margin-top:2px}
+.sv{font-size:20px;font-weight:700;color:#1b3f6e;line-height:1}
+.sl{font-size:10px;color:#bbb;text-transform:uppercase;margin-top:2px}
 
 /* ── Tooltip ── */
 #st-tooltip{
@@ -211,7 +211,7 @@ h1{font-size:13px;font-weight:600;white-space:nowrap}
 
 <div class="fonte">
   Dati: <a href="https://www.dati.lombardia.it" target="_blank">ARPA Lombardia</a> ·
-  <a href="https://open-meteo.com" target="_blank">Open-Meteo</a> (Piemonte/Liguria/Emilia) &nbsp;|&nbsp;
+  <a href="https://open-meteo.com" target="_blank">Open-Meteo</a> (fallback) &nbsp;|&nbsp;
   Mappa: <a href="https://www.openstreetmap.org/copyright" target="_blank">© OpenStreetMap</a>
 </div>
 
@@ -219,20 +219,7 @@ h1{font-size:13px;font-weight:600;white-space:nowrap}
 (function(){
 'use strict';
 
-// ═══════════════════════════════════════════════════════════════
-// CONFIGURAZIONE REGIONI
-// ═══════════════════════════════════════════════════════════════
-var REGIONS = {
-
-  lombardia: {
-    name: 'Lombardia',
-    center: [45.65, 9.85], zoom: 8,
-    fonte: 'ARPA Lombardia (Socrata live)',
-    geojson: 'https://raw.githubusercontent.com/openpolis/geojson-italy/master/geojson/limits_IT_regions.geojson',
-    geojsonFilter: 'lombar',
-    dataSource: 'arpa_lombardia',
-    // Stazioni reali con coordinate (usate anche per Open-Meteo fallback)
-    stations: [
+var LOMBARDIA_STATIONS = [
       {n:"Milano Lambrate",    lat:45.484,lon:9.238, q:122,p:"MI"},
       {n:"Milano Brera",       lat:45.472,lon:9.186, q:121,p:"MI"},
       {n:"Sesto S.Giovanni",   lat:45.534,lon:9.234, q:134,p:"MI"},
@@ -266,132 +253,7 @@ var REGIONS = {
       {n:"Lodi",               lat:45.311,lon:9.502, q:87, p:"LO"},
       {n:"Cremona",            lat:45.133,lon:10.027,q:45, p:"CR"},
       {n:"Mantova",            lat:45.157,lon:10.791,q:19, p:"MN"}
-    ]
-  },
-
-  piemonte: {
-    name: 'Piemonte',
-    center: [44.9, 7.9], zoom: 8,
-    fonte: 'Open-Meteo (ERA5 reanalysis)',
-    geojson: 'https://raw.githubusercontent.com/openpolis/geojson-italy/master/geojson/limits_IT_regions.geojson',
-    geojsonFilter: 'piemon',
-    dataSource: 'open_meteo',
-    stations: [
-      {n:"Torino",          lat:45.070,lon:7.686, q:240, p:"TO"},
-      {n:"Cuneo",           lat:44.385,lon:7.542, q:534, p:"CN"},
-      {n:"Alessandria",     lat:44.912,lon:8.615, q:95,  p:"AL"},
-      {n:"Asti",            lat:44.900,lon:8.207, q:123, p:"AT"},
-      {n:"Novara",          lat:45.446,lon:8.621, q:162, p:"NO"},
-      {n:"Verbania",        lat:45.921,lon:8.552, q:197, p:"VB"},
-      {n:"Vercelli",        lat:45.326,lon:8.418, q:130, p:"VC"},
-      {n:"Biella",          lat:45.563,lon:8.058, q:420, p:"BI"},
-      {n:"Domodossola",     lat:46.113,lon:8.294, q:272, p:"VB"},
-      {n:"Ivrea",           lat:45.467,lon:7.873, q:253, p:"TO"},
-      {n:"Pinerolo",        lat:44.884,lon:7.329, q:376, p:"TO"},
-      {n:"Saluzzo",         lat:44.645,lon:7.490, q:395, p:"CN"},
-      {n:"Alba",            lat:44.700,lon:8.033, q:172, p:"CN"},
-      {n:"Acqui Terme",     lat:44.674,lon:8.469, q:156, p:"AL"},
-      {n:"Varallo",         lat:45.818,lon:8.254, q:453, p:"VC"},
-      {n:"Alagna Valsesia", lat:45.864,lon:7.940, q:1195,p:"VC"},
-      {n:"Macugnaga",       lat:45.964,lon:7.963, q:1327,p:"VB"},
-      {n:"Bra",             lat:44.697,lon:7.855, q:290, p:"CN"},
-      {n:"Fossano",         lat:44.551,lon:7.725, q:400, p:"CN"},
-      {n:"Casale Monf.",    lat:45.133,lon:8.452, q:113, p:"AL"},
-      {n:"Villadossola",    lat:46.069,lon:8.260, q:303, p:"VB"},
-      {n:"Pallanza",        lat:45.929,lon:8.530, q:209, p:"VB"},
-      {n:"Borgosesia",      lat:45.716,lon:8.275, q:354, p:"VC"},
-      {n:"Oropa",           lat:45.621,lon:8.006, q:1180,p:"BI"},
-      {n:"Ceresole Reale",  lat:45.426,lon:7.226, q:1616,p:"TO"},
-      {n:"Sestriere",       lat:44.958,lon:6.878, q:2024,p:"TO"},
-      {n:"Mondovì",         lat:44.388,lon:7.819, q:399, p:"CN"},
-      {n:"Vignale Monf.",   lat:45.016,lon:8.375, q:247, p:"AL"},
-      {n:"Arona",           lat:45.762,lon:8.556, q:212, p:"NO"},
-      {n:"Omegna",          lat:45.878,lon:8.407, q:301, p:"VB"}
-    ]
-  },
-
-  liguria: {
-    name: 'Liguria',
-    center: [44.4, 8.7], zoom: 9,
-    fonte: 'Open-Meteo (ERA5 reanalysis)',
-    geojson: 'https://raw.githubusercontent.com/openpolis/geojson-italy/master/geojson/limits_IT_regions.geojson',
-    geojsonFilter: 'ligur',
-    dataSource: 'open_meteo',
-    stations: [
-      {n:"Genova",          lat:44.407,lon:8.934, q:19,  p:"GE"},
-      {n:"Savona",          lat:44.307,lon:8.482, q:4,   p:"SV"},
-      {n:"La Spezia",       lat:44.102,lon:9.824, q:5,   p:"SP"},
-      {n:"Imperia",         lat:43.889,lon:8.026, q:30,  p:"IM"},
-      {n:"Sanremo",         lat:43.816,lon:7.776, q:10,  p:"IM"},
-      {n:"Albenga",         lat:44.050,lon:8.213, q:9,   p:"SV"},
-      {n:"Chiavari",        lat:44.315,lon:9.323, q:14,  p:"GE"},
-      {n:"Rapallo",         lat:44.351,lon:9.230, q:30,  p:"GE"},
-      {n:"Sestri Levante",  lat:44.270,lon:9.395, q:7,   p:"GE"},
-      {n:"Voltri",          lat:44.420,lon:8.757, q:10,  p:"GE"},
-      {n:"Varazze",         lat:44.361,lon:8.578, q:9,   p:"SV"},
-      {n:"Finale Ligure",   lat:44.168,lon:8.342, q:8,   p:"SV"},
-      {n:"Loano",           lat:44.129,lon:8.259, q:7,   p:"SV"},
-      {n:"Pietra Ligure",   lat:44.148,lon:8.282, q:5,   p:"SV"},
-      {n:"Portofino",       lat:44.303,lon:9.209, q:5,   p:"GE"},
-      {n:"Arenzano",        lat:44.407,lon:8.686, q:10,  p:"GE"},
-      {n:"Ventimiglia",     lat:43.790,lon:7.604, q:5,   p:"IM"},
-      {n:"Sarzana",         lat:44.112,lon:9.959, q:14,  p:"SP"},
-      {n:"Levanto",         lat:44.170,lon:9.611, q:5,   p:"SP"},
-      {n:"Moneglia",        lat:44.234,lon:9.492, q:7,   p:"GE"},
-      {n:"Pieve di Teco",   lat:44.051,lon:7.919, q:262, p:"IM"},
-      {n:"Ceva",            lat:44.387,lon:8.036, q:450, p:"CN"},
-      {n:"Sassello",        lat:44.477,lon:8.490, q:386, p:"SV"},
-      {n:"Triora",          lat:43.992,lon:7.765, q:780, p:"IM"},
-      {n:"Rezzoaglio",      lat:44.501,lon:9.353, q:831, p:"GE"},
-      {n:"Santo Stefano d'Aveto",lat:44.552,lon:9.393,q:1015,p:"GE"},
-      {n:"Borzonasca",      lat:44.434,lon:9.413, q:370, p:"GE"},
-      {n:"Bedonia",         lat:44.501,lon:9.626, q:450, p:"PR"},
-      {n:"Torriglia",       lat:44.519,lon:9.155, q:777, p:"GE"},
-      {n:"Masone",          lat:44.497,lon:8.710, q:433, p:"GE"}
-    ]
-  },
-
-  emilia: {
-    name: 'Emilia-Romagna',
-    center: [44.5, 11.0], zoom: 8,
-    fonte: 'Open-Meteo (ERA5 reanalysis)',
-    geojson: 'https://raw.githubusercontent.com/openpolis/geojson-italy/master/geojson/limits_IT_regions.geojson',
-    geojsonFilter: 'emilia',
-    dataSource: 'open_meteo',
-    stations: [
-      {n:"Bologna",         lat:44.494,lon:11.343,q:54,  p:"BO"},
-      {n:"Ferrara",         lat:44.836,lon:11.620,q:9,   p:"FE"},
-      {n:"Modena",          lat:44.646,lon:10.926,q:34,  p:"MO"},
-      {n:"Reggio Emilia",   lat:44.698,lon:10.631,q:58,  p:"RE"},
-      {n:"Parma",           lat:44.801,lon:10.328,q:57,  p:"PR"},
-      {n:"Piacenza",        lat:45.052,lon:9.693, q:61,  p:"PC"},
-      {n:"Ravenna",         lat:44.418,lon:12.204,q:4,   p:"RA"},
-      {n:"Rimini",          lat:44.059,lon:12.565,q:8,   p:"RN"},
-      {n:"Forlì",           lat:44.222,lon:12.041,q:33,  p:"FC"},
-      {n:"Cesena",          lat:44.133,lon:12.243,q:44,  p:"FC"},
-      {n:"Imola",           lat:44.352,lon:11.714,q:47,  p:"BO"},
-      {n:"Faenza",          lat:44.286,lon:11.883,q:35,  p:"RA"},
-      {n:"Lugo",            lat:44.420,lon:11.904,q:14,  p:"RA"},
-      {n:"Comacchio",       lat:44.695,lon:12.183,q:2,   p:"FE"},
-      {n:"Fidenza",         lat:44.865,lon:10.063,q:75,  p:"PR"},
-      {n:"Guastalla",       lat:44.921,lon:10.660,q:24,  p:"RE"},
-      {n:"Carpi",           lat:44.782,lon:10.886,q:26,  p:"MO"},
-      {n:"Sassuolo",        lat:44.547,lon:10.785,q:121, p:"MO"},
-      {n:"Pavullo",         lat:44.337,lon:10.834,q:682, p:"MO"},
-      {n:"Lago Scaffaiolo", lat:44.175,lon:10.714,q:1773,p:"MO"},
-      {n:"Porretta Terme",  lat:44.157,lon:11.026,q:348, p:"BO"},
-      {n:"Castel S.Pietro", lat:44.401,lon:11.583,q:75,  p:"BO"},
-      {n:"Argenta",         lat:44.614,lon:11.833,q:2,   p:"FE"},
-      {n:"Boretto",         lat:44.898,lon:10.554,q:25,  p:"RE"},
-      {n:"Castelnovo Monti",lat:44.432,lon:10.410,q:724, p:"RE"},
-      {n:"Fiumalbo",        lat:44.166,lon:10.637,q:953, p:"MO"},
-      {n:"Riccione",        lat:44.003,lon:12.655,q:4,   p:"RN"},
-      {n:"Cattolica",       lat:43.966,lon:12.730,q:4,   p:"RN"},
-      {n:"Sasso Marconi",   lat:44.399,lon:11.253,q:124, p:"BO"},
-      {n:"Vergato",         lat:44.281,lon:11.108,q:280, p:"BO"}
-    ]
-  }
-};
+    ];
 
 // ═══════════════════════════════════════════════════════════════
 // COLORI
@@ -423,7 +285,7 @@ function col(mm){var c=mmToRGB(mm);return'rgb('+c[0]+','+c[1]+','+c[2]+')';}
 // ═══════════════════════════════════════════════════════════════
 // MAPPA
 // ═══════════════════════════════════════════════════════════════
-var map=L.map('map').setView([45.5,9.5],7);
+var map=L.map('map').setView([45.65,9.85],8);
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{
   maxZoom:18,subdomains:'abc',
   attribution:'© OpenStreetMap'
@@ -565,7 +427,7 @@ function showTooltip(s,rank,mx,my){
   document.getElementById('tt-prov').textContent=s.p;
   document.getElementById('tt-quota').textContent=s.q+' m slm';
   document.getElementById('tt-rank').textContent='#'+rank+' / '+totalStations;
-  document.getElementById('tt-fonte').textContent=REGIONS[currentRegion].fonte;
+  document.getElementById('tt-fonte').textContent='ARPA Lombardia / Open-Meteo';
   posTooltip(mx,my);
   tooltip.style.display='block';
 }
@@ -694,7 +556,7 @@ function loadARPALombardia(pastDate,nowDate,labelPeriodo){
     })
     .catch(function(e){
       console.warn('[ARPA] fallback Open-Meteo:',e.message);
-      loadOpenMeteo(REGIONS.lombardia.stations,pastDate,nowDate,labelPeriodo,'🌍');
+      loadOpenMeteo(LOMBARDIA_STATIONS,pastDate,nowDate,labelPeriodo,'🌍');
     });
 }
 
@@ -850,8 +712,7 @@ function loadData(pastDate,nowDate,labelPeriodo){
   function fmtD(d){return d.toLocaleDateString('it-IT',{day:'2-digit',month:'short',year:'numeric'});}
   document.getElementById('datehdr').textContent=fmtD(d1)+' – '+fmtD(d2);
 
-  var reg=REGIONS[currentRegion];
-  document.getElementById('fonte-tag').textContent='Fonte: '+reg.fonte;
+  document.getElementById('fonte-tag').textContent='Fonte: ARPA Lombardia / Open-Meteo';
 
   if(reg.dataSource==='arpa_lombardia'){
     loadARPALombardia(pastDate,nowDate,labelPeriodo);
@@ -877,7 +738,7 @@ function loadGeoJSONOnce(cb){
 
 function setRegionBorder(regionKey,cb){
   loadGeoJSONOnce(function(data){
-    var filter=REGIONS[regionKey].geojsonFilter;
+    var filter='lombar';
     var feat=null;
     data.features.forEach(function(f){
       var n=(f.properties.reg_name||f.properties.NOME_REG||'').toLowerCase();
@@ -903,38 +764,7 @@ function setRegionBorder(regionKey,cb){
   });
 }
 
-// ═══════════════════════════════════════════════════════════════
-// CAMBIO REGIONE
-// ═══════════════════════════════════════════════════════════════
-function switchRegion(regionKey){
-  if(regionKey===currentRegion) return;
-  currentRegion=regionKey;
 
-  // Aggiorna tab
-  document.querySelectorAll('.rtab').forEach(function(t){
-    t.classList.toggle('active',t.dataset.region===regionKey);
-  });
-
-  // Reset UI
-  document.querySelectorAll('.tp-btn,.tp-custom-btn').forEach(function(b){b.classList.remove('active');});
-  clearMarkers();
-  clearHeatmap();
-  document.getElementById('legend-panel').style.display='none';
-  document.getElementById('tp-status').textContent='';
-  document.getElementById('badge').textContent='–';
-  document.getElementById('datehdr').textContent='Seleziona un periodo';
-  hideTooltip();
-
-  var reg=REGIONS[regionKey];
-  document.getElementById('fonte-tag').textContent='Fonte: '+reg.fonte;
-
-  // Vola sulla regione e carica confine
-  map.flyTo(reg.center,reg.zoom,{duration:1.0});
-  setRegionBorder(regionKey,function(){});
-}
-
-document.querySelectorAll('.rtab').forEach(function(tab){
-  tab.addEventListener('click',function(){switchRegion(this.dataset.region);});
 });
 
 // ═══════════════════════════════════════════════════════════════
@@ -1004,7 +834,6 @@ document.getElementById('cd-apply').addEventListener('click',function(){
 // ═══════════════════════════════════════════════════════════════
 setRegionBorder('lombardia',function(){
   document.getElementById('loader').style.display='none';
-  document.getElementById('fonte-tag').textContent='Fonte: '+REGIONS.lombardia.fonte;
 });
 
 }());
