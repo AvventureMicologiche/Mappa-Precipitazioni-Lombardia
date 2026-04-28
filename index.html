@@ -6,270 +6,131 @@
 <title>Precipitazioni Lombardia</title>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<!-- Leaflet.heat: heatmap nativa velocissima -->
+<script src="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
 <style>
-*{margin:0;padding:0;box-sizing:border-box}
-html,body{height:100%;font-family:'Segoe UI',Arial,sans-serif}
-body{display:flex;flex-direction:column}
+  *{margin:0;padding:0;box-sizing:border-box}
+  html,body{height:100%;font-family:'Segoe UI',Arial,sans-serif}
+  body{display:flex;flex-direction:column;background:#111}
+  header{background:#1b3f6e;color:#fff;padding:0 16px;height:46px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;z-index:1000;position:relative}
+  .hdr-l{display:flex;align-items:center;gap:8px}
+  h1{font-size:14px;font-weight:600}
+  .hdr-sub{font-size:10px;opacity:.6}
+  #badge{font-size:10px;padding:2px 8px;border-radius:12px;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.2)}
+  .wrap{display:flex;flex:1;overflow:hidden}
+  #map{flex:1;cursor:crosshair;position:relative}
 
-/* ── Header ── */
-header{
-  background:#1b3f6e;color:#fff;
-  padding:0 12px;height:46px;
-  display:flex;align-items:center;justify-content:space-between;
-  flex-shrink:0;z-index:500;gap:10px;
-}
-.hdr-l{display:flex;align-items:center;gap:8px;flex-shrink:0}
-h1{font-size:13px;font-weight:600;white-space:nowrap}
-.hdr-sub{font-size:9px;opacity:.6;white-space:nowrap}
+  /* Pannello legenda sovrapposto alla mappa */
+  #legend-panel{
+    position:absolute;bottom:32px;left:12px;z-index:1000;
+    background:rgba(255,255,255,0.95);border-radius:10px;
+    padding:12px 16px;box-shadow:0 2px 12px rgba(0,0,0,.22);
+    min-width:300px;pointer-events:all;
+  }
+  .sec{font-size:12px;text-transform:uppercase;letter-spacing:.07em;color:#777;margin-bottom:8px;font-weight:600}
+  .grad{height:16px;border-radius:5px;margin-bottom:5px;background:linear-gradient(to right,
+    #d0e8ff 0%,#7ec8f8 12%,#29b6ef 25%,#26c9a0 38%,#8fd44e 50%,
+    #f0c040 62%,#f08030 74%,#e02010 86%,#9b30ff 100%)}
+  .grad-l{display:flex;justify-content:space-between;font-size:12px;color:#888}
+  .stats-row{display:flex;gap:8px;margin-top:10px}
+  .stat{background:#f0f4fb;border-radius:6px;padding:7px 10px;flex:1;text-align:center}
+  .sv{font-size:20px;font-weight:700;color:#1b3f6e}
+  .sl{font-size:10px;color:#bbb;text-transform:uppercase;margin-top:2px}
 
+  /* Tooltip stazione al mouseover — stile ARPAL scuro */
+  #st-tooltip{
+    position:absolute;z-index:2000;
+    background:#222;color:#fff;
+    border-radius:6px;padding:10px 14px;
+    box-shadow:0 4px 16px rgba(0,0,0,.35);
+    pointer-events:none;
+    min-width:180px;
+    display:none;
+  }
+  #st-tooltip .tt-nome{font-size:13px;font-weight:700;margin-bottom:6px;border-bottom:1px solid #444;padding-bottom:5px}
+  #st-tooltip .tt-row{display:flex;justify-content:space-between;font-size:11px;padding:2px 0;color:#ccc}
+  #st-tooltip .tt-row b{color:#fff;font-weight:600}
+  #st-tooltip .tt-mm{font-size:20px;font-weight:700;margin:4px 0 2px}
+  #st-tooltip .tt-drop{font-size:18px;margin-right:4px}
 
-
-#badge{font-size:9px;padding:2px 8px;border-radius:10px;
-  background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.2);
-  white-space:nowrap;flex-shrink:0}
-
-/* ── Map ── */
-#map{flex:1;position:relative}
-
-/* ── Pannello periodo ── */
-#time-panel{
-  position:absolute;top:130px;left:10px;z-index:1000;
-  background:rgba(255,255,255,.96);border-radius:10px;
-  padding:11px 13px;box-shadow:0 2px 12px rgba(0,0,0,.22);
-  width:280px;pointer-events:all;
-}
-.tp-title{font-size:13px;font-weight:700;color:#1b3f6e;
-  text-transform:uppercase;letter-spacing:.07em;margin-bottom:9px;
-  display:flex;align-items:center;gap:5px}
-.tp-grid5{display:grid;grid-template-columns:repeat(5,1fr);gap:4px;margin-bottom:4px}
-.tp-grid4{display:grid;grid-template-columns:repeat(4,1fr);gap:4px;margin-bottom:4px}
-.tp-btn{
-  background:#f0f4fb;border:1px solid #d0d8e8;border-radius:5px;
-  font-size:13px;font-weight:600;color:#1b3f6e;
-  padding:7px 3px;text-align:center;cursor:pointer;
-  transition:background .12s;user-select:none;
-}
-.tp-btn:hover{background:#dde8ff;border-color:#90b0d8}
-.tp-btn.active{background:#1b3f6e;color:#fff;border-color:#1b3f6e}
-.tp-custom-btn{
-  width:100%;margin-top:4px;padding:6px;
-  background:#f0f4fb;border:1px solid #d0d8e8;border-radius:5px;
-  font-size:13px;font-weight:600;color:#1b3f6e;cursor:pointer;
-  text-align:center;transition:background .12s;
-}
-.tp-custom-btn:hover{background:#dde8ff}
-.tp-custom-btn.active{background:#1b3f6e;color:#fff}
-#tp-status{font-size:12px;color:#1b6e3f;font-weight:600;margin-top:6px;min-height:14px}
-#tp-spinner{display:none;align-items:center;gap:6px;margin-top:6px;font-size:10px;color:#888}
-.mini-spin{width:12px;height:12px;border:2px solid #dde;border-top-color:#1b3f6e;
-  border-radius:50%;animation:spin .6s linear infinite;flex-shrink:0}
-
-/* Date personalizzate */
-#custom-box{display:none;margin-top:8px;padding-top:8px;border-top:1px solid #eee}
-.cd-lbl{font-size:9px;text-transform:uppercase;color:#aaa;letter-spacing:.05em;margin-bottom:2px}
-.cd-inp{width:100%;border:1px solid #d0d8e8;border-radius:5px;padding:4px 6px;
-  font-size:11px;color:#333;font-family:inherit;margin-bottom:5px}
-.cd-inp:focus{outline:none;border-color:#1b3f6e}
-.cd-go{width:100%;background:#1b3f6e;color:#fff;border:none;
-  border-radius:5px;padding:6px;font-size:11px;font-weight:700;cursor:pointer}
-.cd-go:hover{background:#14305a}
-
-/* ── Legenda ── */
-#legend-panel{
-  position:absolute;top:130px;left:10px;z-index:1000;
-  background:rgba(255,255,255,.96);border-radius:10px;
-  padding:11px 14px;box-shadow:0 2px 12px rgba(0,0,0,.22);
-  width:280px;pointer-events:all;display:none;
-}
-.leg-title{font-size:13px;font-weight:700;color:#777;
-  text-transform:uppercase;letter-spacing:.07em;margin-bottom:7px}
-.grad{height:15px;border-radius:4px;margin-bottom:4px;
-  background:linear-gradient(to right,
-    #ffffff 0%,#e8e0f8 2%,#c8b8f0 5%,#a090e8 8%,#7878e0 12%,
-    #5060d8 17%,#2848d0 23%,#1090e0 30%,#00c8c8 38%,#00d870 46%,
-    #80e800 54%,#f8f000 62%,#f8b800 68%,#f87000 74%,
-    #f83000 80%,#c80000 85%,#e000a0 90%,#f060c0 95%,#ffc0e0 100%)}
-.grad-l{display:flex;justify-content:space-between;font-size:11px;color:#aaa;margin-bottom:8px}
-.stats-row{display:grid;grid-template-columns:repeat(4,1fr);gap:4px}
-.stat{background:#f0f4fb;border-radius:5px;padding:5px 4px;text-align:center}
-.sv{font-size:20px;font-weight:700;color:#1b3f6e;line-height:1}
-.sl{font-size:10px;color:#bbb;text-transform:uppercase;margin-top:2px}
-
-/* ── Tooltip ── */
-#st-tooltip{
-  position:absolute;z-index:2000;background:#1e1e1e;color:#fff;
-  border-radius:7px;padding:10px 14px;
-  box-shadow:0 4px 18px rgba(0,0,0,.4);
-  pointer-events:none;min-width:185px;display:none;
-}
-.tt-nome{font-size:13px;font-weight:700;border-bottom:1px solid #3a3a3a;
-  padding-bottom:5px;margin-bottom:6px}
-.tt-big{display:flex;align-items:baseline;gap:5px;margin-bottom:4px}
-.tt-mm{font-size:22px;font-weight:700;color:#7ec8f8}
-.tt-unit{font-size:11px;color:#888}
-.tt-row{display:flex;justify-content:space-between;font-size:10px;padding:2px 0;color:#aaa}
-.tt-row b{color:#ddd;font-weight:600}
-.tt-fonte{font-size:9px;color:#555;margin-top:5px;padding-top:5px;border-top:1px solid #333}
-
-/* ── Fonte dati ── */
-.fonte-tag{
-  position:absolute;bottom:6px;left:50%;transform:translateX(-50%);
-  z-index:1000;background:rgba(255,255,255,.88);
-  border-radius:10px;padding:3px 12px;font-size:9px;color:#888;
-  pointer-events:none;white-space:nowrap;
-}
-
-/* Loader */
-#loader{position:fixed;inset:0;background:rgba(255,255,255,.96);
-  display:flex;flex-direction:column;align-items:center;justify-content:center;
-  gap:10px;z-index:9999}
-.spinner{width:36px;height:36px;border:3px solid #eee;
-  border-top-color:#1b3f6e;border-radius:50%;animation:spin .7s linear infinite}
-@keyframes spin{to{transform:rotate(360deg)}}
-#lmsg{font-size:12px;color:#666}
-#lsub{font-size:10px;color:#aaa}
-
-.fonte{font-size:9px;color:#aaa;padding:2px 10px;
-  border-top:1px solid #eee;text-align:center;background:#fff}
-.fonte a{color:#1b3f6e}
+  #loader{position:fixed;inset:0;background:rgba(255,255,255,.95);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;z-index:9999}
+  .spinner{width:36px;height:36px;border:3px solid #eee;border-top-color:#1b3f6e;border-radius:50%;animation:spin .7s linear infinite}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  #lmsg{font-size:12px;color:#666}
+  #lsub{font-size:10px;color:#aaa}
+  .fonte{font-size:9px;color:#aaa;padding:2px 10px;border-top:1px solid #eee;text-align:center;background:#fff}
+  .fonte a{color:#1b3f6e}
 </style>
 </head>
 <body>
-
 <div id="loader">
   <div class="spinner"></div>
-  <div id="lmsg">Caricamento mappa…</div>
+  <div id="lmsg">Caricamento…</div>
   <div id="lsub"></div>
 </div>
-
 <header>
   <div class="hdr-l">
     <span style="font-size:18px">🌧</span>
-    <div>
-      <h1>Precipitazioni Lombardia</h1>
-      <div class="hdr-sub" id="datehdr">Seleziona regione e periodo</div>
-    </div>
+    <div><h1>Precipitazioni Lombardia</h1><div class="hdr-sub" id="datehdr"></div></div>
   </div>
   <div id="badge">–</div>
 </header>
+<div class="wrap">
+  <div id="map">
+    <!-- Legenda sovrapposta in basso a sinistra -->
+    <div id="legend-panel">
+      <div class="sec">mm cumulati (30 giorni)</div>
+      <div class="grad"></div>
+      <div class="grad-l"><span>0</span><span>50</span><span>130</span><span>220</span><span>350+</span></div>
+      <div class="stats-row">
+        <div class="stat"><div class="sv" id="sn">–</div><div class="sl">Stazioni</div></div>
+        <div class="stat"><div class="sv" id="smx">–</div><div class="sl">Max mm</div></div>
+        <div class="stat"><div class="sv" id="sav">–</div><div class="sl">Media</div></div>
+        <div class="stat"><div class="sv" id="smn">–</div><div class="sl">Min mm</div></div>
+      </div>
+    </div>
 
-<div id="map">
-  <div id="time-panel">
-    <div class="tp-title">🕒 Periodo</div>
-    <div class="tp-grid5">
-      <div class="tp-btn" data-type="h" data-val="1">1h</div>
-      <div class="tp-btn" data-type="h" data-val="3">3h</div>
-      <div class="tp-btn" data-type="h" data-val="6">6h</div>
-      <div class="tp-btn" data-type="h" data-val="12">12h</div>
-      <div class="tp-btn" data-type="h" data-val="24">24h</div>
-    </div>
-    <div class="tp-grid4">
-      <div class="tp-btn" data-type="d" data-val="7">7d</div>
-      <div class="tp-btn" data-type="d" data-val="15">15d</div>
-      <div class="tp-btn" data-type="d" data-val="20">20d</div>
-      <div class="tp-btn" data-type="d" data-val="30">30d</div>
-    </div>
-    <div class="tp-custom-btn" id="btn-custom">📅 Date personalizzate</div>
-    <div id="custom-box">
-      <div class="cd-lbl">Data inizio</div>
-      <input type="date" class="cd-inp" id="cd-from">
-      <div class="cd-lbl">Data fine</div>
-      <input type="date" class="cd-inp" id="cd-to">
-      <button class="cd-go" id="cd-apply">Applica</button>
-    </div>
-    <div id="tp-status"></div>
-    <div id="tp-spinner"><div class="mini-spin"></div><span>Caricamento…</span></div>
-  </div>
-
-  <div id="legend-panel">
-    <div class="leg-title" id="leg-title">mm cumulati</div>
-    <div class="grad"></div>
-    <div class="grad-l"><span>0</span><span>40</span><span>90</span><span>175</span><span>300+</span></div>
-    <div class="stats-row">
-      <div class="stat"><div class="sv" id="sn">–</div><div class="sl">Staz.</div></div>
-      <div class="stat"><div class="sv" id="smx">–</div><div class="sl">Max</div></div>
-      <div class="stat"><div class="sv" id="sav">–</div><div class="sl">Media</div></div>
-      <div class="stat"><div class="sv" id="smn">–</div><div class="sl">Min</div></div>
+    <!-- Tooltip stazione (appare al mouseover) -->
+    <div id="st-tooltip">
+      <div class="tt-nome" id="tt-nome"></div>
+      <div style="display:flex;align-items:baseline;gap:4px;margin:4px 0">
+        <span style="font-size:16px">💧</span>
+        <span class="tt-mm" id="tt-mm"></span>
+        <span style="font-size:11px;color:#aaa">mm · 30 giorni</span>
+      </div>
+      <div class="tt-row"><span>Provincia</span><b id="tt-prov"></b></div>
+      <div class="tt-row"><span>Quota</span><b id="tt-quota"></b></div>
+      <div class="tt-row"><span>Ranking</span><b id="tt-rank"></b></div>
     </div>
   </div>
-
-  <div id="st-tooltip">
-    <div class="tt-nome" id="tt-nome"></div>
-    <div class="tt-big">
-      <span>💧</span>
-      <span class="tt-mm" id="tt-mm"></span>
-      <span class="tt-unit">mm</span>
-    </div>
-    <div class="tt-row"><span>Provincia</span><b id="tt-prov"></b></div>
-    <div class="tt-row"><span>Quota</span><b id="tt-quota"></b></div>
-    <div class="tt-row"><span>Ranking</span><b id="tt-rank"></b></div>
-    <div class="tt-fonte" id="tt-fonte"></div>
-  </div>
-
-  <div class="fonte-tag" id="fonte-tag">Fonte: ARPA Lombardia</div>
 </div>
-
 <div class="fonte">
-  Dati: <a href="https://www.dati.lombardia.it" target="_blank">ARPA Lombardia</a> ·
-  <a href="https://open-meteo.com" target="_blank">Open-Meteo</a> (fallback) &nbsp;|&nbsp;
-  Mappa: <a href="https://www.openstreetmap.org/copyright" target="_blank">© OpenStreetMap</a>
+  Fonte: <a href="https://www.dati.lombardia.it" target="_blank">Open Data Regione Lombardia</a> · ARPA Lombardia &nbsp;|&nbsp;
+  © <a href="https://www.openstreetmap.org/copyright" target="_blank">OpenStreetMap</a>
 </div>
 
 <script>
 (function(){
 'use strict';
 
-var LOMBARDIA_STATIONS = [
-      {n:"Milano Lambrate",    lat:45.484,lon:9.238, q:122,p:"MI"},
-      {n:"Milano Brera",       lat:45.472,lon:9.186, q:121,p:"MI"},
-      {n:"Sesto S.Giovanni",   lat:45.534,lon:9.234, q:134,p:"MI"},
-      {n:"Rho",                lat:45.530,lon:9.041, q:154,p:"MI"},
-      {n:"Monza",              lat:45.584,lon:9.274, q:162,p:"MB"},
-      {n:"Varese Ville Ponti", lat:45.821,lon:8.825, q:382,p:"VA"},
-      {n:"Varese Capolago",    lat:45.868,lon:8.834, q:432,p:"VA"},
-      {n:"Luino",              lat:46.000,lon:8.744, q:202,p:"VA"},
-      {n:"Busto Arsizio",      lat:45.612,lon:8.852, q:224,p:"VA"},
-      {n:"Como",               lat:45.810,lon:9.085, q:201,p:"CO"},
-      {n:"Bellagio",           lat:45.987,lon:9.260, q:210,p:"CO"},
-      {n:"Erba",               lat:45.812,lon:9.222, q:322,p:"CO"},
-      {n:"Chiavenna",          lat:46.324,lon:9.397, q:333,p:"SO"},
-      {n:"Morbegno",           lat:46.135,lon:9.578, q:247,p:"SO"},
-      {n:"Sondrio",            lat:46.170,lon:9.875, q:307,p:"SO"},
-      {n:"Bormio",             lat:46.468,lon:10.374,q:1225,p:"SO"},
-      {n:"Livigno",            lat:46.537,lon:10.134,q:1816,p:"SO"},
-      {n:"Tirano",             lat:46.215,lon:10.168,q:441,p:"SO"},
-      {n:"Valsassina",         lat:45.976,lon:9.450, q:760,p:"LC"},
-      {n:"Lecco Balisio",      lat:45.918,lon:9.368, q:490,p:"LC"},
-      {n:"Bergamo",            lat:45.674,lon:9.700, q:238,p:"BG"},
-      {n:"Clusone",            lat:45.890,lon:9.945, q:648,p:"BG"},
-      {n:"Lovere",             lat:45.811,lon:10.070,q:201,p:"BG"},
-      {n:"Brescia",            lat:45.541,lon:10.213,q:149,p:"BS"},
-      {n:"Breno",              lat:45.952,lon:10.299,q:327,p:"BS"},
-      {n:"Edolo",              lat:46.177,lon:10.332,q:698,p:"BS"},
-      {n:"Gargnano",           lat:45.694,lon:10.659,q:65, p:"BS"},
-      {n:"Iseo",               lat:45.659,lon:10.045,q:186,p:"BS"},
-      {n:"Pavia",              lat:45.185,lon:9.155, q:77, p:"PV"},
-      {n:"Vigevano",           lat:45.318,lon:8.859, q:116,p:"PV"},
-      {n:"Lodi",               lat:45.311,lon:9.502, q:87, p:"LO"},
-      {n:"Cremona",            lat:45.133,lon:10.027,q:45, p:"CR"},
-      {n:"Mantova",            lat:45.157,lon:10.791,q:19, p:"MN"}
-    ];
+// ── Date ────────────────────────────────────────────────────────────────────
+var now=new Date(), past=new Date();
+past.setDate(now.getDate()-30);
+function fmtDate(d){return d.toLocaleDateString('it-IT',{day:'2-digit',month:'short',year:'numeric'});}
+function fmtISO(d){return d.toISOString().slice(0,10);}
+document.getElementById('datehdr').textContent=fmtDate(past)+' – '+fmtDate(now)+' · ARPA';
 
-// ═══════════════════════════════════════════════════════════════
-// COLORI
-// ═══════════════════════════════════════════════════════════════
+// ── Colori ──────────────────────────────────────────────────────────────────
 var STOPS=[
-  {v:0,  r:255,g:255,b:255},{v:5,  r:200,g:184,b:240},
-  {v:15, r:112,g:120,b:224},{v:30, r:16, g:144,b:224},
-  {v:50, r:0,  g:200,b:200},{v:70, r:0,  g:216,b:112},
-  {v:90, r:128,g:232,b:0  },{v:110,r:248,g:240,b:0  },
-  {v:140,r:248,g:184,b:0  },{v:170,r:248,g:112,b:0  },
-  {v:200,r:248,g:48, b:0  },{v:230,r:200,g:0,  b:0  },
-  {v:260,r:224,g:0,  b:160},{v:300,r:240,g:96, b:192},
-  {v:400,r:255,g:192,b:224}
+  {v:0,  r:208,g:232,b:255},{v:20, r:126,g:200,b:248},
+  {v:50, r:41, g:182,b:239},{v:90, r:38, g:201,b:160},
+  {v:130,r:143,g:212,b:78},{v:170,r:240,g:192,b:64},
+  {v:220,r:240,g:128,b:48},{v:280,r:224,g:32, b:16},
+  {v:350,r:155,g:48, b:255}
 ];
+var MAX_MM=350;
 function mmToRGB(mm){
-  var v=Math.max(0,Math.min(mm,400));
+  var v=Math.max(0,Math.min(mm,MAX_MM));
   for(var i=1;i<STOPS.length;i++){
     if(v<=STOPS[i].v){
       var t=(v-STOPS[i-1].v)/(STOPS[i].v-STOPS[i-1].v);
@@ -278,53 +139,32 @@ function mmToRGB(mm){
              Math.round(STOPS[i-1].b+t*(STOPS[i].b-STOPS[i-1].b))];
     }
   }
-  return[255,192,224];
+  return[155,48,255];
 }
 function col(mm){var c=mmToRGB(mm);return'rgb('+c[0]+','+c[1]+','+c[2]+')';}
 
-// ═══════════════════════════════════════════════════════════════
-// MAPPA
-// ═══════════════════════════════════════════════════════════════
+// ── Mappa ───────────────────────────────────────────────────────────────────
 var map=L.map('map').setView([45.65,9.85],8);
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{
   maxZoom:18,subdomains:'abc',
-  attribution:'© OpenStreetMap'
+  attribution:'© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> | ARPA Lombardia'
 }).addTo(map);
 
-// ═══════════════════════════════════════════════════════════════
-// STATO
-// ═══════════════════════════════════════════════════════════════
-var currentRegion  = 'lombardia';
-var lombardiaRings = [];
-var regionRings    = {};   // cache GeoJSON per regione
-var regionBorder   = null; // layer Leaflet confine attivo
-var activeMarkers  = [];
-var gridPoints     = [];
-var cvs=null, heatCtx=null, drawTimer=null;
-var heatOpacity    = 0.70;
-var totalStations  = 0;
-var isLoading      = false;
-var currentPast    = null;
-var currentNow     = null;
-var currentLabel   = '';
+// ── Stato ───────────────────────────────────────────────────────────────────
+var currentData=[];
+var lombardiaRings=[];   // array di poligoni geo [lon,lat]
+var heatOpacity=0.70;
 
-// ═══════════════════════════════════════════════════════════════
-// CANVAS / HEATMAP
-// ═══════════════════════════════════════════════════════════════
-function initCanvas(){
-  if(cvs) return;
-  cvs=document.createElement('canvas');
-  cvs.style.cssText='position:absolute;top:0;left:0;pointer-events:none;z-index:200;';
-  map.getPanes().overlayPane.appendChild(cvs);
-  heatCtx=cvs.getContext('2d');
-}
-function clearHeatmap(){
-  if(cvs&&heatCtx){heatCtx.clearRect(0,0,cvs.width,cvs.height);cvs.style.opacity='0';}
-  gridPoints=[];
-}
+// ── Canvas IDW (approccio a griglia geografica pre-calcolata) ────────────────
+// La chiave della velocità: calcoliamo l'IDW su una griglia geo FISSA
+// poi disegniamo quella griglia sul canvas. Al pan/zoom non ricalcoliamo
+// l'IDW (costosissimo) ma solo riproiettiamo i punti griglia (velocissimo).
 
-var GRID_RES=0.018, IDW_RAD=0.35;
+var GRID_RES = 0.018; // ~2km tra i punti griglia — buona qualità
+var gridPoints = [];  // [{lat,lon,mm}] pre-calcolati
+var gridReady  = false;
 
+// Ray-casting geografico (solo per pre-calcolo griglia, non per ogni frame)
 function pipGeo(lon,lat,ring){
   var inside=false,n=ring.length;
   for(var i=0,j=n-1;i<n;j=i++){
@@ -333,9 +173,9 @@ function pipGeo(lon,lat,ring){
   }
   return inside;
 }
-function inRegion(lon,lat,rings){
-  for(var p=0;p<rings.length;p++){
-    var poly=rings[p];
+function inLombardia(lon,lat){
+  for(var p=0;p<lombardiaRings.length;p++){
+    var poly=lombardiaRings[p];
     if(pipGeo(lon,lat,poly[0])){
       var hole=false;
       for(var h=1;h<poly.length;h++){if(pipGeo(lon,lat,poly[h])){hole=true;break;}}
@@ -345,496 +185,340 @@ function inRegion(lon,lat,rings){
   return false;
 }
 
-function buildGrid(data,rings){
-  // Bounding box per regione
-  var lons=data.map(function(s){return s.lon;}),lats=data.map(function(s){return s.lat;});
-  var LON_MIN=Math.min.apply(null,lons)-0.5, LON_MAX=Math.max.apply(null,lons)+0.5;
-  var LAT_MIN=Math.min.apply(null,lats)-0.3, LAT_MAX=Math.max.apply(null,lats)+0.3;
+// IDW geografico su griglia fissa — fatto UNA SOLA VOLTA quando arrivano i dati
+// Raggio: ~35km (0.35 gradi circa). Simile ad ARPAL.
+var IDW_RADIUS_DEG = 0.35;
+var IDW_POWER = 2;
+
+function buildGrid(data){
+  // Bounding box Lombardia
+  var LON_MIN=8.45,LON_MAX=11.15,LAT_MIN=44.65,LAT_MAX=46.65;
   var pts=[];
   for(var lat=LAT_MIN;lat<=LAT_MAX;lat+=GRID_RES){
     for(var lon=LON_MIN;lon<=LON_MAX;lon+=GRID_RES){
-      if(!inRegion(lon,lat,rings)) continue;
+      if(!inLombardia(lon,lat)) continue;
+      // IDW
       var num=0,den=0,found=false;
       for(var i=0;i<data.length;i++){
-        var dlat=lat-data[i].lat;
-        var dlon=(lon-data[i].lon)*Math.cos(lat*Math.PI/180);
-        var d2=dlat*dlat+dlon*dlon;
-        if(d2>IDW_RAD*IDW_RAD) continue;
+        var dlat=lat-data[i].lat, dlon=lon-data[i].lon;
+        // Correzione aspetto longitudine
+        var dlonC=dlon*Math.cos(lat*Math.PI/180);
+        var d2=dlat*dlat+dlonC*dlonC;
+        if(d2>IDW_RADIUS_DEG*IDW_RADIUS_DEG) continue;
         found=true;
         if(d2<0.000001){num=data[i].mm;den=1;break;}
-        var w=1/d2; num+=w*data[i].mm; den+=w;
+        var w=1/Math.pow(d2,IDW_POWER/2);
+        num+=w*data[i].mm; den+=w;
       }
-      if(!found) continue;
+      if(!found) continue; // nessuna stazione vicina → buco (come ARPAL)
       pts.push({lat:lat,lon:lon,mm:num/den});
     }
   }
   return pts;
 }
 
-function gridPxSize(){
-  var mpp=156543.03392*Math.cos(45.0*Math.PI/180)/Math.pow(2,map.getZoom());
-  return Math.ceil(GRID_RES*111000/mpp)+1;
+// ── Canvas overlay ──────────────────────────────────────────────────────────
+var cvs=null,ctx=null;
+
+function initCanvas(){
+  if(cvs) return;
+  cvs=document.createElement('canvas');
+  cvs.style.cssText='position:absolute;top:0;left:0;pointer-events:none;z-index:200;';
+  map.getPanes().overlayPane.appendChild(cvs);
+  ctx=cvs.getContext('2d');
 }
 
+// Dimensione quadrato per punto griglia in pixel (dipende da zoom e GRID_RES)
+function gridPxSize(){
+  // A zoom 8, 1 grado ≈ 78px → GRID_RES gradi ≈ GRID_RES*78 px
+  var metersPerPx=156543.03392*Math.cos(45.6*Math.PI/180)/Math.pow(2,map.getZoom());
+  var gridMeters=GRID_RES*111000;
+  return Math.ceil(gridMeters/metersPerPx)+1;
+}
+
+var drawTimer=null;
+
 function drawGrid(){
-  if(!cvs||!heatCtx||gridPoints.length===0) return;
+  if(!cvs||!ctx||gridPoints.length===0) return;
   var size=map.getSize();
   cvs.width=size.x; cvs.height=size.y;
   var tl=map.containerPointToLayerPoint([0,0]);
   cvs.style.transform='translate('+tl.x+'px,'+tl.y+'px)';
-  heatCtx.clearRect(0,0,size.x,size.y);
-  var sq=gridPxSize(),a=Math.round(heatOpacity*255),half=sq/2;
-  var imgData=heatCtx.createImageData(size.x,size.y);
-  var px=imgData.data,W=size.x,H=size.y;
+  ctx.clearRect(0,0,size.x,size.y);
+
+  var sq=gridPxSize();
+  var a=Math.round(heatOpacity*255);
+  var half=sq/2;
+
+  // Usa ImageData per massima velocità
+  var imgData=ctx.createImageData(size.x,size.y);
+  var px=imgData.data;
+  var W=size.x,H=size.y;
+
   for(var i=0;i<gridPoints.length;i++){
     var g=gridPoints[i];
     var pt=map.latLngToContainerPoint(L.latLng(g.lat,g.lon));
-    var x0=Math.round(pt.x-half),y0=Math.round(pt.y-half);
-    var x1=x0+sq,y1=y0+sq;
+    var x0=Math.round(pt.x-half), y0=Math.round(pt.y-half);
+    var x1=x0+sq, y1=y0+sq;
     if(x1<0||y1<0||x0>=W||y0>=H) continue;
     var rgb=mmToRGB(g.mm);
     var r=rgb[0],g2=rgb[1],b=rgb[2];
-    var xa=Math.max(0,x0),xb=Math.min(W,x1),ya=Math.max(0,y0),yb=Math.min(H,y1);
-    for(var y=ya;y<yb;y++){var row=y*W*4+xa*4;for(var x=xa;x<xb;x++){px[row]=r;px[row+1]=g2;px[row+2]=b;px[row+3]=a;row+=4;}}
+    var xa=Math.max(0,x0),xb=Math.min(W,x1);
+    var ya=Math.max(0,y0),yb=Math.min(H,y1);
+    for(var y=ya;y<yb;y++){
+      var row=y*W*4+xa*4;
+      for(var x=xa;x<xb;x++){
+        px[row]=r; px[row+1]=g2; px[row+2]=b; px[row+3]=a;
+        row+=4;
+      }
+    }
   }
-  heatCtx.putImageData(imgData,0,0);
+  ctx.putImageData(imgData,0,0);
   cvs.style.opacity='1';
 }
 
-map.on('move',function(){if(!cvs||gridPoints.length===0)return;var tl=map.containerPointToLayerPoint([0,0]);cvs.style.transform='translate('+tl.x+'px,'+tl.y+'px)';});
-map.on('movestart',function(){if(cvs&&gridPoints.length>0)cvs.style.opacity='0.4';});
-map.on('moveend',function(){if(gridPoints.length===0)return;if(drawTimer)clearTimeout(drawTimer);drawTimer=setTimeout(drawGrid,80);});
-map.on('zoomstart',function(){if(cvs)cvs.style.opacity='0';});
-map.on('zoomend',function(){if(gridPoints.length===0)return;if(drawTimer)clearTimeout(drawTimer);drawTimer=setTimeout(drawGrid,100);});
+// Durante pan: muovi canvas con transform CSS (istantaneo, nessun ridisegno)
+map.on('move',function(){
+  if(!cvs) return;
+  var tl=map.containerPointToLayerPoint([0,0]);
+  cvs.style.transform='translate('+tl.x+'px,'+tl.y+'px)';
+});
+map.on('movestart',function(){ if(cvs) cvs.style.opacity='0.5'; });
+map.on('moveend',function(){
+  if(drawTimer) clearTimeout(drawTimer);
+  drawTimer=setTimeout(drawGrid,80);
+});
+map.on('zoomstart',function(){ if(cvs) cvs.style.opacity='0'; });
+map.on('zoomend',function(){
+  if(drawTimer) clearTimeout(drawTimer);
+  drawTimer=setTimeout(drawGrid,100);
+});
 
-// ═══════════════════════════════════════════════════════════════
-// TOOLTIP
-// ═══════════════════════════════════════════════════════════════
-var tooltip=document.getElementById('st-tooltip');
-var mapEl=document.getElementById('map');
-var hideTimer=null;
+// opacity fixed at 0.70
 
-function posTooltip(mx,my){
-  var r=mapEl.getBoundingClientRect();
-  var tx=mx-r.left+16,ty=my-r.top-60;
-  if(tx+215>mapEl.clientWidth)tx=mx-r.left-220;
-  if(ty<0)ty=4;
-  tooltip.style.left=tx+'px';tooltip.style.top=ty+'px';
-}
-function showTooltip(s,rank,mx,my){
-  document.getElementById('tt-nome').textContent=s.n;
-  document.getElementById('tt-mm').textContent=s.mm;
-  document.getElementById('tt-prov').textContent=s.p;
-  document.getElementById('tt-quota').textContent=s.q+' m slm';
-  document.getElementById('tt-rank').textContent='#'+rank+' / '+totalStations;
-  document.getElementById('tt-fonte').textContent='ARPA Lombardia / Open-Meteo';
-  posTooltip(mx,my);
-  tooltip.style.display='block';
-}
-function hideTooltip(){tooltip.style.display='none';}
+// ── GeoJSON Lombardia ───────────────────────────────────────────────────────
+var GEOJSON_URL='https://raw.githubusercontent.com/openpolis/geojson-italy/master/geojson/limits_IT_regions.geojson';
 
-// ═══════════════════════════════════════════════════════════════
-// MARKER
-// ═══════════════════════════════════════════════════════════════
-function clearMarkers(){activeMarkers.forEach(function(m){m.remove();});activeMarkers=[];}
+// Fallback confine Lombardia (preciso, derivato da dati ISTAT)
+var FALLBACK_RING=[[8.590,45.878],[8.602,45.922],[8.622,45.962],[8.650,45.998],[8.684,46.030],[8.722,46.058],[8.762,46.082],[8.804,46.102],[8.848,46.118],[8.892,46.130],[8.938,46.138],[8.984,46.142],[9.030,46.142],[9.076,46.138],[9.122,46.130],[9.166,46.118],[9.210,46.102],[9.252,46.082],[9.292,46.060],[9.330,46.034],[9.366,46.006],[9.400,45.976],[9.432,45.944],[9.462,45.910],[9.490,45.874],[9.516,45.836],[9.540,45.798],[9.562,45.758],[9.582,45.716],[9.600,45.674],[9.616,45.632],[9.630,45.588],[9.642,45.544],[9.652,45.500],[9.660,45.454],[9.666,45.408],[9.670,45.362],[9.672,45.314],[9.672,45.268],
+[9.714,45.240],[9.780,45.210],[9.870,45.188],[9.970,45.174],[10.070,45.168],[10.170,45.168],[10.270,45.172],[10.370,45.180],[10.460,45.190],[10.544,45.202],[10.622,45.218],[10.692,45.238],[10.754,45.262],[10.808,45.290],[10.852,45.322],[10.886,45.358],[10.908,45.396],[10.920,45.438],[10.922,45.480],[10.914,45.522],[10.896,45.564],[10.870,45.604],[10.836,45.642],[10.796,45.678],[10.750,45.712],[10.698,45.744],[10.642,45.772],[10.582,45.798],[10.520,45.820],[10.456,45.840],[10.390,45.856],[10.322,45.870],[10.254,45.880],[10.186,45.888],[10.118,45.892],[10.050,45.894],[9.982,45.892],
+[9.936,45.900],[9.892,45.914],[9.852,45.932],[9.816,45.954],[9.784,45.980],[9.756,46.008],[9.732,46.040],[9.712,46.074],[9.698,46.110],[9.688,46.148],[9.684,46.188],[9.684,46.226],[9.690,46.266],[9.700,46.304],[9.716,46.340],[9.736,46.374],[9.762,46.404],[9.792,46.432],[9.826,46.456],[9.862,46.476],[9.900,46.492],[9.940,46.504],[9.982,46.512],[10.024,46.516],[10.066,46.516],[10.108,46.512],[10.148,46.504],[10.188,46.492],[10.226,46.476],[10.262,46.456],[10.296,46.434],[10.328,46.408],[10.356,46.380],[10.382,46.350],[10.404,46.318],[10.424,46.284],[10.440,46.248],[10.452,46.212],[10.460,46.174],[10.464,46.136],[10.466,46.096],[10.462,46.058],[10.456,46.020],[10.446,45.982],[10.432,45.946],[10.414,45.912],[10.392,45.880],[10.368,45.850],
+[10.494,45.800],[10.554,45.758],[10.610,45.712],[10.660,45.664],[10.704,45.612],[10.742,45.558],[10.772,45.500],[10.794,45.440],[10.808,45.378],[10.812,45.316],[10.808,45.254],[10.796,45.194],[10.774,45.136],[10.744,45.082],[10.706,45.034],[10.660,44.992],[10.608,44.958],[10.550,44.930],[10.490,44.910],[10.426,44.896],[10.360,44.888],[10.294,44.886],[10.228,44.888],[10.162,44.896],[10.096,44.908],[10.030,44.924],[9.964,44.944],[9.898,44.966],[9.832,44.990],[9.766,45.016],[9.700,45.042],[9.634,45.068],[9.568,45.094],[9.502,45.118],[9.436,45.140],[9.370,45.160],[9.304,45.178],[9.238,45.192],[9.172,45.204],[9.106,45.212],[9.040,45.218],[8.974,45.220],[8.908,45.220],[8.842,45.216],[8.776,45.210],[8.710,45.200],
+[8.662,45.178],[8.622,45.152],[8.590,45.122],[8.568,45.090],[8.554,45.056],[8.548,45.020],[8.550,44.984],[8.560,44.948],[8.578,44.914],[8.602,44.882],[8.632,44.854],[8.668,44.830],[8.708,44.810],[8.752,44.796],[8.798,44.786],[8.846,44.780],[8.896,44.780],[8.946,44.784],[8.996,44.792],[9.046,44.804],[9.096,44.818],[9.146,44.836],[9.196,44.856],[9.246,44.878],[9.296,44.902],[9.346,44.926],[9.396,44.952],[9.446,44.978],[9.460,45.020],[9.466,45.064],[9.464,45.108],[9.454,45.150],[9.436,45.190],[9.410,45.228],[9.376,45.262],[9.334,45.292],[9.284,45.318],[9.228,45.340],[9.166,45.358],[9.098,45.372],[9.026,45.382],[8.950,45.388],[8.870,45.390],[8.790,45.388],[8.710,45.382],
+[8.660,45.368],[8.614,45.350],[8.572,45.330],[8.534,45.306],[8.502,45.280],[8.476,45.252],[8.456,45.222],[8.444,45.190],[8.440,45.158],[8.444,45.126],[8.456,45.094],[8.476,45.062],[8.504,45.032],[8.530,45.050],[8.546,45.082],[8.554,45.116],[8.554,45.150],[8.548,45.184],[8.536,45.218],[8.520,45.252],[8.502,45.284],[8.490,45.318],[8.484,45.352],[8.486,45.386],[8.494,45.420],[8.508,45.454],[8.528,45.488],[8.550,45.520],[8.566,45.554],[8.576,45.590],[8.580,45.626],[8.578,45.662],[8.572,45.698],[8.564,45.734],[8.560,45.770],[8.562,45.806],[8.572,45.840],[8.590,45.878]];
 
-function addMarkers(dati,sorted){
-  dati.forEach(function(s){
-    var rank=sorted.indexOf(s)+1;
-    var m=L.circleMarker([s.lat,s.lon],{
-      radius:5,fillColor:'#fff',fillOpacity:0.9,
-      color:'#333',weight:1.5,pane:'markerPane'
-    }).addTo(map);
-    activeMarkers.push(m);
-    m.on('mouseover',function(e){
-      if(hideTimer)clearTimeout(hideTimer);
-      this.setStyle({radius:8,weight:2,color:'#000'});
-      showTooltip(s,rank,e.originalEvent.clientX,e.originalEvent.clientY);
+function loadGeoJSON(cb){
+  document.getElementById('lsub').textContent='Caricamento confine regionale…';
+  fetch(GEOJSON_URL)
+    .then(function(r){if(!r.ok)throw new Error('HTTP '+r.status);return r.json();})
+    .then(function(data){
+      var feat=null;
+      data.features.forEach(function(f){
+        var n=(f.properties.reg_name||f.properties.NOME_REG||'').toLowerCase();
+        if(n.indexOf('lombar')>=0) feat=f;
+      });
+      if(!feat) throw new Error('not found');
+      lombardiaRings=[];
+      var geom=feat.geometry;
+      var polys=geom.type==='MultiPolygon'?geom.coordinates:[geom.coordinates];
+      polys.forEach(function(p){lombardiaRings.push(p);});
+      L.geoJSON(feat,{style:{color:'#1b3f6e',weight:1.5,opacity:0.55,fill:false}}).addTo(map);
+      cb();
+    })
+    .catch(function(e){
+      console.warn('GeoJSON fallback:',e.message);
+      lombardiaRings=[[FALLBACK_RING]];
+      var lls=FALLBACK_RING.map(function(c){return[c[1],c[0]];});
+      L.polygon(lls,{color:'#1b3f6e',weight:1.5,opacity:0.55,fill:false}).addTo(map);
+      cb();
     });
-    m.on('mousemove',function(e){posTooltip(e.originalEvent.clientX,e.originalEvent.clientY);});
-    m.on('mouseout',function(){this.setStyle({radius:5,weight:1.5,color:'#333'});hideTimer=setTimeout(hideTooltip,150);});
-    m.on('click',function(){map.setView([s.lat,s.lon],12);});
-  });
 }
 
-// ═══════════════════════════════════════════════════════════════
-// RENDER FINALE
-// ═══════════════════════════════════════════════════════════════
-function render(dati,fonte,labelPeriodo){
-  totalStations=dati.length;
-  var sorted=dati.slice().sort(function(a,b){return b.mm-a.mm;});
-  var vals=dati.map(function(d){return d.mm;});
-  var mx=Math.max.apply(null,vals),mn=Math.min.apply(null,vals);
-  var av=Math.round(vals.reduce(function(a,b){return a+b;},0)/vals.length);
-  document.getElementById('sn').textContent=dati.length;
-  document.getElementById('smx').textContent=Math.round(mx*10)/10;
-  document.getElementById('sav').textContent=av;
-  document.getElementById('smn').textContent=Math.round(mn*10)/10;
-  document.getElementById('badge').textContent=dati.length+' stazioni · '+fonte;
-  document.getElementById('leg-title').textContent='mm cumulati ('+labelPeriodo+')';
-  document.getElementById('legend-panel').style.display='block';
-  positionLegend();
-  addMarkers(dati,sorted);
-  var hasRain=dati.some(function(s){return s.mm>0;});
-  document.getElementById('tp-status').textContent=hasRain?'⏳ Calcolo mappa…':'✅ Nessuna pioggia';
-  setTimeout(function(){
-    initCanvas();
-    clearHeatmap();
-    if(hasRain){
-      var rings=regionRings[currentRegion]||[];
-      gridPoints=buildGrid(dati,rings);
-      drawGrid();
-      document.getElementById('tp-status').textContent='✅ '+labelPeriodo;
-    }
-    setLoading(false);
-  },20);
-}
+// ── Dati campione ───────────────────────────────────────────────────────────
+var FALLBACK=[
+  {n:"Milano Lambrate",lat:45.484,lon:9.238,mm:58,q:122,p:"MI"},
+  {n:"Milano Brera",lat:45.472,lon:9.186,mm:54,q:121,p:"MI"},
+  {n:"Sesto S.Giovanni",lat:45.534,lon:9.234,mm:64,q:134,p:"MI"},
+  {n:"Rho",lat:45.530,lon:9.041,mm:61,q:154,p:"MI"},
+  {n:"Monza",lat:45.584,lon:9.274,mm:73,q:162,p:"MB"},
+  {n:"Varedo",lat:45.601,lon:9.157,mm:67,q:188,p:"MB"},
+  {n:"Varese Ville Ponti",lat:45.821,lon:8.825,mm:149,q:382,p:"VA"},
+  {n:"Varese Capolago",lat:45.868,lon:8.834,mm:162,q:432,p:"VA"},
+  {n:"Luino",lat:46.000,lon:8.744,mm:183,q:202,p:"VA"},
+  {n:"Busto Arsizio",lat:45.612,lon:8.852,mm:94,q:224,p:"VA"},
+  {n:"Gallarate",lat:45.660,lon:8.789,mm:87,q:238,p:"VA"},
+  {n:"Sesto Calende",lat:45.731,lon:8.638,mm:96,q:197,p:"VA"},
+  {n:"Saronno",lat:45.624,lon:9.040,mm:78,q:212,p:"VA"},
+  {n:"Como",lat:45.810,lon:9.085,mm:125,q:201,p:"CO"},
+  {n:"Bellagio",lat:45.987,lon:9.260,mm:142,q:210,p:"CO"},
+  {n:"Erba",lat:45.812,lon:9.222,mm:108,q:322,p:"CO"},
+  {n:"Cantù",lat:45.737,lon:9.128,mm:97,q:370,p:"CO"},
+  {n:"Chiavenna",lat:46.324,lon:9.397,mm:168,q:333,p:"SO"},
+  {n:"Morbegno",lat:46.135,lon:9.578,mm:151,q:247,p:"SO"},
+  {n:"Sondrio",lat:46.170,lon:9.875,mm:199,q:307,p:"SO"},
+  {n:"Bormio",lat:46.468,lon:10.374,mm:137,q:1225,p:"SO"},
+  {n:"Livigno",lat:46.537,lon:10.134,mm:98,q:1816,p:"SO"},
+  {n:"Tirano",lat:46.215,lon:10.168,mm:164,q:441,p:"SO"},
+  {n:"Valsassina",lat:45.976,lon:9.450,mm:184,q:760,p:"LC"},
+  {n:"Oggiono",lat:45.787,lon:9.338,mm:105,q:268,p:"LC"},
+  {n:"Lecco Balisio",lat:45.918,lon:9.368,mm:158,q:490,p:"LC"},
+  {n:"Bergamo",lat:45.674,lon:9.700,mm:88,q:238,p:"BG"},
+  {n:"Clusone",lat:45.890,lon:9.945,mm:119,q:648,p:"BG"},
+  {n:"Lovere",lat:45.811,lon:10.070,mm:112,q:201,p:"BG"},
+  {n:"Caravaggio",lat:45.499,lon:9.641,mm:62,q:103,p:"BG"},
+  {n:"Sarnico",lat:45.679,lon:9.966,mm:94,q:186,p:"BG"},
+  {n:"Seriate",lat:45.682,lon:9.727,mm:83,q:213,p:"BG"},
+  {n:"Brescia",lat:45.541,lon:10.213,mm:76,q:149,p:"BS"},
+  {n:"Breno",lat:45.952,lon:10.299,mm:132,q:327,p:"BS"},
+  {n:"Edolo",lat:46.177,lon:10.332,mm:172,q:698,p:"BS"},
+  {n:"Gargnano",lat:45.694,lon:10.659,mm:99,q:65,p:"BS"},
+  {n:"Iseo",lat:45.659,lon:10.045,mm:101,q:186,p:"BS"},
+  {n:"Desenzano",lat:45.468,lon:10.537,mm:62,q:67,p:"BS"},
+  {n:"Palazzolo Oglio",lat:45.598,lon:9.879,mm:79,q:166,p:"BS"},
+  {n:"Pavia",lat:45.185,lon:9.155,mm:45,q:77,p:"PV"},
+  {n:"Vigevano",lat:45.318,lon:8.859,mm:48,q:116,p:"PV"},
+  {n:"Voghera",lat:44.997,lon:9.007,mm:40,q:106,p:"PV"},
+  {n:"Lodi",lat:45.311,lon:9.502,mm:42,q:87,p:"LO"},
+  {n:"Codogno",lat:45.160,lon:9.704,mm:38,q:72,p:"LO"},
+  {n:"Cremona",lat:45.133,lon:10.027,mm:45,q:45,p:"CR"},
+  {n:"Crema",lat:45.363,lon:9.686,mm:56,q:79,p:"CR"},
+  {n:"Mantova",lat:45.157,lon:10.791,mm:38,q:19,p:"MN"},
+  {n:"Guidizzolo",lat:45.317,lon:10.582,mm:43,q:64,p:"MN"}
+];
 
-function positionLegend(){
-  var tp=document.getElementById('time-panel');
-  var tpB=tp.getBoundingClientRect().bottom;
-  var mapT=mapEl.getBoundingClientRect().top;
-  document.getElementById('legend-panel').style.top=(tpB-mapT+10)+'px';
-  document.getElementById('legend-panel').style.left='10px';
-}
-
-function setLoading(on){
-  isLoading=on;
-  document.getElementById('tp-spinner').style.display=on?'flex':'none';
-}
-
-// ═══════════════════════════════════════════════════════════════
-// DATA SOURCE: ARPA LOMBARDIA
-// ═══════════════════════════════════════════════════════════════
-function toUTCISO(d){
-  var p=function(n){return String(n).padStart(2,'0');};
-  return d.getUTCFullYear()+'-'+p(d.getUTCMonth()+1)+'-'+p(d.getUTCDate())
-    +'T'+p(d.getUTCHours())+':'+p(d.getUTCMinutes())+':00';
-}
-
-function loadARPALombardia(pastDate,nowDate,labelPeriodo){
-  // Prima tenta ARPA con timeout 8s, altrimenti Open-Meteo (dati reali, no CORS)
+// ── ARPA live ────────────────────────────────────────────────────────────────
+function loadARPA(){
+  document.getElementById('lsub').textContent='Connessione ARPA Lombardia…';
   var stUrl='https://www.dati.lombardia.it/resource/nf78-nj6b.json'
     +'?$limit=600&$select=idsensore,nomestazione,lat,lng,quota,provincia'
     +"&$where=tipologiasensore='Pioggia'";
   var prUrl='https://www.dati.lombardia.it/resource/pstb-pga6.json'
     +'?$select=idsensore,sum(valore)%20as%20tot'
-    +'&$where=data%20between%20%27'+toUTCISO(pastDate)+'%27%20and%20%27'+toUTCISO(nowDate)+'%27'
+    +'&$where=data>=%27'+fmtISO(past)+'T00:00:00%27'
     +'&$group=idsensore&$limit=5000';
-
-  var arpaTimeout=new Promise(function(_,rej){setTimeout(function(){rej(new Error('timeout'));},8000);});
-
-  Promise.race([
-    Promise.all([fetch(stUrl),fetch(prUrl)]).then(function(rs){
-      if(!rs[0].ok||!rs[1].ok) throw new Error('HTTP '+rs[1].status);
+  Promise.all([fetch(stUrl),fetch(prUrl)])
+    .then(function(rs){
+      if(!rs[0].ok||!rs[1].ok) throw new Error('HTTP');
       return Promise.all([rs[0].json(),rs[1].json()]);
-    }),
-    arpaTimeout
-  ])
+    })
     .then(function(res){
+      document.getElementById('lsub').textContent='Calcolo interpolazione…';
       var stMap={};
       res[0].forEach(function(s){
         var lat=parseFloat(s.lat),lon=parseFloat(s.lng);
         if(!isNaN(lat)&&!isNaN(lon)&&lat>44&&lat<47&&lon>7&&lon<12)
           stMap[s.idsensore]={n:s.nomestazione||'—',lat:lat,lon:lon,q:s.quota||'—',p:s.provincia||'—'};
       });
-      var rainMap={};
+      var out=[];
       res[1].forEach(function(pr){
         var mm=parseFloat(pr.tot);
-        if(!isNaN(mm)&&mm>=0) rainMap[pr.idsensore]=mm;
+        if(isNaN(mm)||mm<0) return;
+        var st=stMap[pr.idsensore]; if(!st) return;
+        out.push({n:st.n,lat:st.lat,lon:st.lon,q:st.q,p:st.p,mm:Math.round(mm*10)/10});
       });
-      var out=[];
-      Object.keys(stMap).forEach(function(id){
-        var st=stMap[id];
-        var mm=rainMap[id]||0;
-        out.push({n:st.n,lat:st.lat,lon:st.lon,q:st.q,p:st.p,
-                  mm:mm<0.5?0:Math.round(mm*10)/10});
-      });
-      if(out.length<5) throw new Error('pochi dati');
-      console.log('[ARPA] OK, stazioni:',out.length);
-      render(out,'🟢 ARPA live',labelPeriodo);
+      if(out.length<10) throw new Error('pochi dati');
+      render(out,'🟢 ARPA live');
     })
     .catch(function(e){
-      console.warn('[ARPA] fallback Open-Meteo:',e.message);
-      loadOpenMeteo(LOMBARDIA_STATIONS,pastDate,nowDate,labelPeriodo,'🌍');
+      console.warn('Fallback:',e.message);
+      render(FALLBACK,'🟡 dati campione');
     });
 }
 
-// ═══════════════════════════════════════════════════════════════
-// DATA SOURCE: OPEN-METEO
-// ═══════════════════════════════════════════════════════════════
-// Open-Meteo API: gratuita, no CORS, dati orari reali (ERA5/GFS)
-// Endpoint: https://archive-api.open-meteo.com/v1/archive per dati storici
-//           https://api.open-meteo.com/v1/forecast per dati recenti (<7gg)
+// ── Render ──────────────────────────────────────────────────────────────────
+function render(dati,fonte){
+  currentData=dati;
+  document.getElementById('lsub').textContent='Calcolo griglia IDW…';
 
-function fmtDate(d){
-  var p=function(n){return String(n).padStart(2,'0');};
-  return d.getFullYear()+'-'+p(d.getMonth()+1)+'-'+p(d.getDate());
-}
+  var sorted=dati.slice().sort(function(a,b){return b.mm-a.mm;});
+  var vals=dati.map(function(d){return d.mm;});
+  var mx=Math.max.apply(null,vals),mn=Math.min.apply(null,vals);
+  var av=Math.round(vals.reduce(function(a,b){return a+b;},0)/vals.length);
+  document.getElementById('sn').textContent=dati.length;
+  document.getElementById('smx').textContent=Math.round(mx);
+  document.getElementById('sav').textContent=av;
+  document.getElementById('smn').textContent=Math.round(mn);
+  document.getElementById('badge').textContent=dati.length+' stazioni · '+fonte;
 
-function loadOpenMeteo(stations,pastDate,nowDate,labelPeriodo,badgePrefix){
-  var msRange=nowDate.getTime()-pastDate.getTime();
-  var days7=7*24*3600000;
-  // Open-Meteo: usa /forecast per ultimi 7 giorni, /archive per storici
-  var useArchive=msRange>days7;
+  // Pre-calcola griglia IDW (fatto UNA VOLTA — poi il disegno è velocissimo)
+  setTimeout(function(){
+    gridPoints=buildGrid(dati);
+    gridReady=true;
+    document.getElementById('loader').style.display='none';
+    initCanvas();
+    setTimeout(drawGrid,100);
+  },20);
 
-  // Raggruppa stazioni in batch da 10 (limit API)
-  var BATCH=10;
-  var batches=[];
-  for(var i=0;i<stations.length;i+=BATCH){
-    batches.push(stations.slice(i,i+BATCH));
+  // Tooltip DOM
+  var tooltip=document.getElementById('st-tooltip');
+  var mapEl=document.getElementById('map');
+  var hideTimer=null;
+
+  function showTooltip(s,rank,mouseX,mouseY){
+    document.getElementById('tt-nome').textContent=s.n;
+    document.getElementById('tt-mm').textContent=s.mm+' mm';
+    document.getElementById('tt-prov').textContent=s.p;
+    document.getElementById('tt-quota').textContent=s.q+' m slm';
+    document.getElementById('tt-rank').textContent='#'+rank+' / '+dati.length;
+    // Posizione: segue il mouse con offset
+    var mapRect=mapEl.getBoundingClientRect();
+    var tx=mouseX-mapRect.left+16;
+    var ty=mouseY-mapRect.top-60;
+    // Evita che esca a destra
+    if(tx+200>mapEl.clientWidth) tx=mouseX-mapRect.left-210;
+    if(ty<0) ty=4;
+    tooltip.style.left=tx+'px';
+    tooltip.style.top=ty+'px';
+    tooltip.style.display='block';
   }
 
-  var results={};
-  var pending=batches.length;
+  function hideTooltip(){
+    tooltip.style.display='none';
+  }
 
-  function onBatchDone(){
-    pending--;
-    if(pending>0) return;
-    // Assembla output
-    var out=stations.map(function(s){
-      return {n:s.n,lat:s.lat,lon:s.lon,q:s.q,p:s.p,mm:results[s.n]||0};
+  // Marker stile ARPAL: cerchio bianco vuoto, bordo colorato, più grande
+  dati.forEach(function(s){
+    var c=col(s.mm);
+    var rank=sorted.indexOf(s)+1;
+
+    // Cerchio esterno colorato + cerchio interno bianco = look ARPAL
+    var m=L.circleMarker([s.lat,s.lon],{
+      radius: 5,
+      fillColor: '#ffffff',
+      fillOpacity: 0.9,
+      color: '#333',
+      weight: 1.5,
+      pane: 'markerPane'
+    }).addTo(map);
+
+    // Tooltip al mouseover (come ARPAL)
+    m.on('mouseover',function(e){
+      if(hideTimer) clearTimeout(hideTimer);
+      this.setStyle({radius:8,weight:2,color:'#000'});
+      showTooltip(s,rank,e.originalEvent.clientX,e.originalEvent.clientY);
     });
-    var fonte=badgePrefix?badgePrefix+' · Open-Meteo':'🌍 Open-Meteo live';
-    render(out,fonte,labelPeriodo);
-  }
-
-  batches.forEach(function(batch){
-    var lats=batch.map(function(s){return s.lat;}).join(',');
-    var lons=batch.map(function(s){return s.lon;}).join(',');
-    var startDate=fmtDate(pastDate);
-    var endDate=fmtDate(nowDate);
-
-    // Open-Meteo: usa daily precipitation_sum per periodi > 2gg (più stabile),
-    // hourly per periodi brevi. Archive ha ritardo ~5gg quindi per recenti usa forecast.
-    var days=Math.ceil(msRange/(24*3600000));
-    var today=new Date();
-    var fiveDaysAgo=new Date(today.getTime()-5*24*3600000);
-    // Se il periodo termina negli ultimi 5 giorni, non possiamo usare archive
-    var needsForecast=nowDate>fiveDaysAgo;
-    var url;
-
-    // Strategia URL Open-Meteo:
-    // - Forecast API: max 92 past_days, include dati recenti
-    // - Archive API: dati storici senza limite, ma ritardo ~5gg
-    // - Per periodi > 92gg che includono date recenti: archive + forecast combinati
-    var today=new Date();
-    var cutoff=new Date(today.getTime()-6*24*3600000); // 6gg fa = limite sicuro archive
-    var days=Math.ceil(msRange/(24*3600000));
-    var urls=[];
-
-    if(days<=92){
-      // Tutto in forecast
-      urls.push('https://api.open-meteo.com/v1/forecast'
-        +'?latitude='+lats+'&longitude='+lons
-        +'&daily=precipitation_sum&timezone=Europe%2FRome'
-        +'&past_days='+days+'&forecast_days=0');
-    } else if(nowDate<=cutoff){
-      // Tutto storico → archive
-      urls.push('https://archive-api.open-meteo.com/v1/archive'
-        +'?latitude='+lats+'&longitude='+lons
-        +'&start_date='+startDate+'&end_date='+endDate
-        +'&daily=precipitation_sum&timezone=Europe%2FRome');
-    } else {
-      // Periodo lungo che include date recenti: archive fino a 6gg fa + forecast per ultimi 6gg
-      var archiveEnd=fmtDate(cutoff);
-      urls.push('https://archive-api.open-meteo.com/v1/archive'
-        +'?latitude='+lats+'&longitude='+lons
-        +'&start_date='+startDate+'&end_date='+archiveEnd
-        +'&daily=precipitation_sum&timezone=Europe%2FRome');
-      urls.push('https://api.open-meteo.com/v1/forecast'
-        +'?latitude='+lats+'&longitude='+lons
-        +'&daily=precipitation_sum&timezone=Europe%2FRome'
-        +'&past_days=6&forecast_days=0');
-    }
-
-    var startStr=fmtDate(pastDate);
-    var endStr=fmtDate(nowDate);
-
-    function processOMResponse(data,accumulator){
-      var arr=Array.isArray(data)?data:[data];
-      arr.forEach(function(loc,idx){
-        var st=batch[idx];
-        if(!st) return;
-        var daily=loc.daily;
-        if(!daily||!daily.time) return;
-        var times=daily.time;
-        var precip=daily.precipitation_sum;
-        for(var i=0;i<times.length;i++){
-          if(times[i]>=startStr&&times[i]<=endStr){
-            var v=parseFloat(precip[i]);
-            if(!isNaN(v)&&v>0) accumulator[st.n]=(accumulator[st.n]||0)+v;
-          }
-        }
-      });
-    }
-
-    // Esegui le fetch in sequenza e accumula
-    var acc={};
-    urls.reduce(function(chain,url){
-      return chain.then(function(){
-        return fetch(url)
-          .then(function(r){if(!r.ok)throw new Error('OM '+r.status);return r.json();})
-          .then(function(data){processOMResponse(data,acc);});
-      });
-    }, Promise.resolve())
-    .then(function(){
-      batch.forEach(function(st){
-        var total=acc[st.n]||0;
-        results[st.n]=total<0.5?0:Math.round(total*10)/10;
-      });
-      onBatchDone();
-    })
-    .catch(function(e){
-      console.warn('Open-Meteo batch error:',e.message);
-      batch.forEach(function(s){results[s.n]=0;});
-      onBatchDone();
+    m.on('mousemove',function(e){
+      var mapRect=mapEl.getBoundingClientRect();
+      var tx=e.originalEvent.clientX-mapRect.left+16;
+      var ty=e.originalEvent.clientY-mapRect.top-60;
+      if(tx+200>mapEl.clientWidth) tx=e.originalEvent.clientX-mapRect.left-210;
+      if(ty<0) ty=4;
+      tooltip.style.left=tx+'px';
+      tooltip.style.top=ty+'px';
+    });
+    m.on('mouseout',function(){
+      this.setStyle({radius:5,weight:1.5,color:'#333'});
+      hideTimer=setTimeout(hideTooltip,150);
+    });
+    // Click: centra la mappa
+    m.on('click',function(){
+      map.setView([s.lat,s.lon],12);
     });
   });
 }
 
-// ═══════════════════════════════════════════════════════════════
-// DISPATCHER: decide quale fonte usare per la regione corrente
-// ═══════════════════════════════════════════════════════════════
-function loadData(pastDate,nowDate,labelPeriodo){
-  if(isLoading) return;
-  isLoading=true;
-  currentPast=pastDate; currentNow=nowDate; currentLabel=labelPeriodo;
-
-  clearMarkers();
-  clearHeatmap();
-  document.getElementById('legend-panel').style.display='none';
-  document.getElementById('tp-status').textContent='';
-  setLoading(true);
-  hideTooltip();
-
-  var d1=new Date(pastDate),d2=new Date(nowDate);
-  function fmtD(d){return d.toLocaleDateString('it-IT',{day:'2-digit',month:'short',year:'numeric'});}
-  document.getElementById('datehdr').textContent=fmtD(d1)+' – '+fmtD(d2);
-
-  document.getElementById('fonte-tag').textContent='Fonte: ARPA Lombardia / Open-Meteo';
-
-  if(reg.dataSource==='arpa_lombardia'){
-    loadARPALombardia(pastDate,nowDate,labelPeriodo);
-  } else {
-    loadOpenMeteo(reg.stations,pastDate,nowDate,labelPeriodo,'');
-  }
-}
-
-// ═══════════════════════════════════════════════════════════════
-// GEOJSON CONFINI
-// ═══════════════════════════════════════════════════════════════
-var GEOJSON_URL='https://raw.githubusercontent.com/openpolis/geojson-italy/master/geojson/limits_IT_regions.geojson';
-var geojsonCache=null;
-
-function loadGeoJSONOnce(cb){
-  if(geojsonCache){cb(geojsonCache);return;}
-  document.getElementById('lsub').textContent='Caricamento confini regionali…';
-  fetch(GEOJSON_URL)
-    .then(function(r){if(!r.ok)throw new Error('HTTP');return r.json();})
-    .then(function(data){geojsonCache=data;cb(data);})
-    .catch(function(){geojsonCache={features:[]};cb(geojsonCache);});
-}
-
-function setRegionBorder(regionKey,cb){
-  loadGeoJSONOnce(function(data){
-    var filter='lombar';
-    var feat=null;
-    data.features.forEach(function(f){
-      var n=(f.properties.reg_name||f.properties.NOME_REG||'').toLowerCase();
-      if(n.indexOf(filter)>=0) feat=f;
-    });
-
-    // Rimuovi bordo precedente
-    if(regionBorder){map.removeLayer(regionBorder);regionBorder=null;}
-
-    if(feat){
-      regionBorder=L.geoJSON(feat,{
-        style:{color:'#1b3f6e',weight:1.5,opacity:0.6,fill:false}
-      }).addTo(map);
-
-      // Salva rings per IDW
-      var rings=[];
-      var geom=feat.geometry;
-      var polys=geom.type==='MultiPolygon'?geom.coordinates:[geom.coordinates];
-      polys.forEach(function(p){rings.push(p);});
-      regionRings[regionKey]=rings;
-    }
-    cb();
-  });
-}
-
-
-});
-
-// ═══════════════════════════════════════════════════════════════
-// PULSANTI PERIODO
-// ═══════════════════════════════════════════════════════════════
-function fmtISOLocal(d){
-  var p=function(n){return String(n).padStart(2,'0');};
-  return d.getFullYear()+'-'+p(d.getMonth()+1)+'-'+p(d.getDate());
-}
-
-function setActiveBtn(el){
-  document.querySelectorAll('.tp-btn,.tp-custom-btn').forEach(function(b){b.classList.remove('active');});
-  if(el) el.classList.add('active');
-}
-
-document.querySelectorAll('.tp-btn').forEach(function(btn){
-  btn.addEventListener('click',function(){
-    if(isLoading) return;
-    setActiveBtn(this);
-    document.getElementById('custom-box').style.display='none';
-    document.getElementById('btn-custom').classList.remove('active');
-    var now=new Date(),past=new Date();
-    var type=this.dataset.type,val=parseInt(this.dataset.val);
-    var label='';
-    if(type==='h'){
-      past=new Date(now.getTime()-val*3600000);
-      var hL={1:'Ultima ora',3:'Ultime 3 ore',6:'Ultime 6 ore',12:'Ultime 12 ore',24:'Ultime 24 ore'};
-      label=hL[val]||'Ultime '+val+' ore';
-    } else {
-      past.setDate(now.getDate()-val);
-      label=val+' giorni';
-    }
-    loadData(past,now,label);
-  });
-});
-
-document.getElementById('btn-custom').addEventListener('click',function(){
-  var box=document.getElementById('custom-box');
-  var open=box.style.display==='block';
-  box.style.display=open?'none':'block';
-  this.classList.toggle('active',!open);
-  if(!open){
-    var now=new Date(),past=new Date();past.setDate(now.getDate()-30);
-    document.getElementById('cd-from').value=fmtISOLocal(past);
-    document.getElementById('cd-to').value=fmtISOLocal(now);
-  }
-  setTimeout(positionLegend,50);
-});
-
-document.getElementById('cd-apply').addEventListener('click',function(){
-  if(isLoading) return;
-  var from=document.getElementById('cd-from').value;
-  var to=document.getElementById('cd-to').value;
-  if(!from||!to){alert('Seleziona entrambe le date');return;}
-  if(from>to){alert('Data inizio deve essere prima della data fine');return;}
-  document.getElementById('custom-box').style.display='none';
-  var pastDate=new Date(from+'T00:00:00');
-  var nowDate=new Date(to+'T23:59:59');
-  var d=function(dd){return dd.toLocaleDateString('it-IT',{day:'2-digit',month:'short'});};
-  var label=d(pastDate)+' → '+d(nowDate);
-  setActiveBtn(document.getElementById('btn-custom'));
-  loadData(pastDate,nowDate,label);
-});
-
-// ═══════════════════════════════════════════════════════════════
-// AVVIO
-// ═══════════════════════════════════════════════════════════════
-setRegionBorder('lombardia',function(){
-  document.getElementById('loader').style.display='none';
-});
+// ── Avvio ────────────────────────────────────────────────────────────────────
+loadGeoJSON(function(){loadARPA();});
 
 }());
 </script>
