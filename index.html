@@ -824,7 +824,20 @@ function addMarkers(dati,sorted){
     });
     m.on('mousemove',function(e){posTooltip(e.originalEvent.clientX,e.originalEvent.clientY);});
     m.on('mouseout',function(){this.setStyle({radius:5,weight:1.5,color:'#333'});hideTimer=setTimeout(hideTooltip,150);});
-    m.on('click',function(){map.setView([s.lat,s.lon],12);});
+    m.on('click',function(e){
+      map.setView([s.lat,s.lon],12);
+    });
+    // Touch support per mobile
+    m.on('touchstart',function(e){
+      if(hideTimer)clearTimeout(hideTimer);
+      this.setStyle({radius:10,weight:2,color:'#000'});
+      var touch=e.originalEvent.touches[0];
+      showTooltip(s,rank,touch.clientX,touch.clientY);
+      e.originalEvent.stopPropagation();
+    });
+    m.on('touchend',function(e){
+      e.originalEvent.stopPropagation();
+    });
   });
 }
 
@@ -1282,50 +1295,40 @@ function loadDefaultMarkers(){
           color:'#333',weight:1.5,pane:'markerPane'
         }).addTo(map);
         activeMarkers.push(m);
-        m.on('mouseover',function(e){
-          if(hideTimer)clearTimeout(hideTimer);
-          this.setStyle({radius:8,weight:2,color:'#000'});
-          document.getElementById('tt-nome').textContent=s.n;
-          document.getElementById('tt-mm').textContent='–';
-          document.getElementById('tt-prov').textContent=s.p;
-          document.getElementById('tt-quota').textContent=s.q+' m slm';
-          document.getElementById('tt-rank').textContent='seleziona un periodo';
-          document.getElementById('tt-fonte').textContent='ARPA Lombardia';
-          posTooltip(e.originalEvent.clientX,e.originalEvent.clientY);
-          tooltip.style.display='block';
-        });
-        m.on('mousemove',function(e){posTooltip(e.originalEvent.clientX,e.originalEvent.clientY);});
-        m.on('mouseout',function(){
-          this.setStyle({radius:5,weight:1.5,color:'#333'});
-          hideTimer=setTimeout(hideTooltip,150);
-        });
+        function addDefaultEvents(m,s){
+          function showDef(cx,cy){
+            if(hideTimer)clearTimeout(hideTimer);
+            m.setStyle({radius:10,weight:2,color:'#000'});
+            document.getElementById('tt-nome').textContent=s.n;
+            document.getElementById('tt-mm').textContent='–';
+            document.getElementById('tt-prov').textContent=s.p;
+            document.getElementById('tt-quota').textContent=s.q+' m slm';
+            document.getElementById('tt-rank').textContent='seleziona un periodo';
+            document.getElementById('tt-fonte').textContent='ARPA Lombardia';
+            posTooltip(cx,cy);
+            tooltip.style.display='block';
+          }
+          m.on('mouseover',function(e){showDef(e.originalEvent.clientX,e.originalEvent.clientY);});
+          m.on('mousemove',function(e){posTooltip(e.originalEvent.clientX,e.originalEvent.clientY);});
+          m.on('mouseout',function(){m.setStyle({radius:5,weight:1.5,color:'#333'});hideTimer=setTimeout(hideTooltip,150);});
+          m.on('touchstart',function(e){
+            var t=e.originalEvent.touches[0];
+            showDef(t.clientX,t.clientY);
+            e.originalEvent.stopPropagation();
+          });
+          m.on('touchend',function(e){e.originalEvent.stopPropagation();});
+        }
+        addDefaultEvents(m,s);
       });
     })
     .catch(function(){
-      // Fallback: usa stazioni hardcodate
       LOMBARDIA_STATIONS.forEach(function(s){
         var m=L.circleMarker([s.lat,s.lon],{
           radius:5,fillColor:'#fff',fillOpacity:0.9,
           color:'#333',weight:1.5,pane:'markerPane'
         }).addTo(map);
         activeMarkers.push(m);
-        m.on('mouseover',function(e){
-          if(hideTimer)clearTimeout(hideTimer);
-          this.setStyle({radius:8,weight:2,color:'#000'});
-          document.getElementById('tt-nome').textContent=s.n;
-          document.getElementById('tt-mm').textContent='–';
-          document.getElementById('tt-prov').textContent=s.p;
-          document.getElementById('tt-quota').textContent=s.q+' m slm';
-          document.getElementById('tt-rank').textContent='seleziona un periodo';
-          document.getElementById('tt-fonte').textContent='ARPA Lombardia';
-          posTooltip(e.originalEvent.clientX,e.originalEvent.clientY);
-          tooltip.style.display='block';
-        });
-        m.on('mousemove',function(e){posTooltip(e.originalEvent.clientX,e.originalEvent.clientY);});
-        m.on('mouseout',function(){
-          this.setStyle({radius:5,weight:1.5,color:'#333'});
-          hideTimer=setTimeout(hideTooltip,150);
-        });
+        addDefaultEvents(m,s);
       });
     });
 }
