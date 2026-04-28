@@ -9,7 +9,7 @@
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 html,body{height:100%;font-family:'Segoe UI',Arial,sans-serif}
-body{display:flex;flex-direction:column}
+body{display:flex;flex-direction:column;height:100%;overflow:hidden;}
 
 /* ── Header ── */
 header{
@@ -29,10 +29,17 @@ h1{font-size:13px;font-weight:600;white-space:nowrap}
   white-space:nowrap;flex-shrink:0}
 
 /* ── Map ── */
-#map{flex:1;position:relative}
+#map-wrap{flex:1;position:relative;overflow:hidden;}
+#map{width:100%;height:100%;}
 
 /* ══════════════════════════════════════════════
-   PANNELLI — BASE (desktop: posizione assoluta)
+   LAYOUT WRAPPER
+   ══════════════════════════════════════════════ */
+#map-wrap{flex:1;position:relative;overflow:hidden;}
+#map{width:100%;height:100%;}
+
+/* ══════════════════════════════════════════════
+   PANNELLI — BASE DESKTOP (sovrapposti alla mappa)
    ══════════════════════════════════════════════ */
 #time-panel,#legend-panel{
   position:absolute;left:10px;z-index:1000;
@@ -95,76 +102,57 @@ h1{font-size:13px;font-weight:600;white-space:nowrap}
 .sl{font-size:7px;color:#bbb;text-transform:uppercase;margin-top:2px}
 
 /* ══════════════════════════════════════════════
-   MOBILE (≤600px): bottom sheet scorrevole
+   MOBILE (≤600px) — pannelli SOTTO la mappa
    ══════════════════════════════════════════════ */
 @media(max-width:600px){
-  /* Pannelli diventano bottom sheet fisso */
+
+  /* Il wrapper non è più flex:1 ma lascia spazio ai pannelli */
+  #map-wrap{
+    flex:1;
+    min-height:0;
+    /* su mobile la mappa occupa lo spazio disponibile */
+  }
+
+  /* Pannelli: NON sovrapposti, ma nel flusso normale sotto la mappa */
   #time-panel,#legend-panel{
-    position:fixed;
-    left:0;right:0;bottom:0;
-    width:100%;
-    border-radius:16px 16px 0 0;
-    box-shadow:0 -4px 24px rgba(0,0,0,.18);
-    z-index:2000;
-    padding:12px 16px 20px;
-    max-height:55vh;
-    overflow-y:auto;
-    -webkit-overflow-scrolling:touch;
+    position:static !important;
+    width:100% !important;
+    border-radius:0 !important;
+    box-shadow:0 -2px 8px rgba(0,0,0,.12) !important;
+    left:auto !important;top:auto !important;
+    border-top:1px solid #e8eaf0;
   }
-  #time-panel{
-    top:auto;
-    /* handle bar */
-    padding-top:20px;
-  }
-  #time-panel::before{
-    content:'';
-    display:block;
-    width:36px;height:4px;
-    background:#ccc;border-radius:2px;
-    margin:-10px auto 12px;
-  }
-  /* Legenda: posizionata sopra il time-panel (con spazio) */
-  #legend-panel{
-    bottom:auto;
-    top:auto;
-    /* viene posizionata via JS su mobile */
-    position:fixed;
-    left:0;right:0;
-    border-radius:0;
-    border-bottom:1px solid #eee;
-    max-height:30vh;
-    z-index:1999;
-  }
+  #time-panel{padding:10px 14px 8px;}
+  #legend-panel{padding:8px 14px 10px;}
+
+  /* Body diventa scroll verticale */
+  body{overflow-y:auto;height:auto;min-height:100%;}
+  #map-wrap{height:45vh;flex:none;}
 
   /* Pulsanti più grandi al tocco */
-  .tp-btn{padding:10px 2px;font-size:13px;}
-  .tp-grid5{gap:5px;margin-bottom:6px;}
-  .tp-grid4{gap:5px;margin-bottom:6px;}
-  .tp-custom-btn{padding:10px;font-size:13px;}
+  .tp-btn{padding:9px 2px;font-size:13px;}
+  .tp-grid5{gap:5px;margin-bottom:5px;}
+  .tp-grid4{gap:5px;margin-bottom:5px;}
+  .tp-custom-btn{padding:9px;font-size:13px;margin-top:5px;}
 
-  /* Statistiche più grandi */
-  .sv{font-size:20px;}
+  /* Stats */
+  .sv{font-size:19px;}
   .sl{font-size:9px;}
-  .grad{height:16px;}
+  .grad{height:14px;}
   .grad-l{font-size:10px;}
-  .leg-title{font-size:12px;}
+  .leg-title{font-size:11px;margin-bottom:5px;}
 
-  /* Tooltip: full width in basso */
+  /* Tooltip: appare in alto */
   #st-tooltip{
-    position:fixed;
-    left:8px;right:8px;bottom:auto;
-    top:56px;
-    min-width:0;
-    width:auto;
+    position:fixed;top:50px;left:8px;right:8px;
+    bottom:auto;min-width:0;width:auto;z-index:3000;
   }
 
-  /* Nascondi fonte in basso su mobile */
-  .fonte{display:none;}
-  .fonte-tag{bottom:auto;top:56px;font-size:8px;}
-
-  /* Header più compatto */
+  /* fonte tag: dentro la mappa in alto */
+  .fonte-tag{top:4px;bottom:auto;font-size:8px;}
+  .fonte{font-size:8px;padding:3px 8px;}
   h1{font-size:12px;}
-  .hdr-sub{display:none;}
+  .hdr-sub{font-size:8px;}
 }
 
 /* ══════════════════════════════════════════════
@@ -235,60 +223,62 @@ h1{font-size:13px;font-weight:600;white-space:nowrap}
   <div id="badge">–</div>
 </header>
 
-<div id="map">
-  <div id="time-panel">
-    <div class="tp-title">🕒 Periodo</div>
-    <div class="tp-grid5">
-      <div class="tp-btn" data-type="h" data-val="1">1h</div>
-      <div class="tp-btn" data-type="h" data-val="3">3h</div>
-      <div class="tp-btn" data-type="h" data-val="6">6h</div>
-      <div class="tp-btn" data-type="h" data-val="12">12h</div>
-      <div class="tp-btn" data-type="h" data-val="24">24h</div>
+<div id="map-wrap">
+  <div id="map">
+    <div id="st-tooltip">
+      <div class="tt-nome" id="tt-nome"></div>
+      <div class="tt-big">
+        <span>💧</span>
+        <span class="tt-mm" id="tt-mm"></span>
+        <span class="tt-unit">mm</span>
+      </div>
+      <div class="tt-row"><span>Provincia</span><b id="tt-prov"></b></div>
+      <div class="tt-row"><span>Quota</span><b id="tt-quota"></b></div>
+      <div class="tt-row"><span>Ranking</span><b id="tt-rank"></b></div>
+      <div class="tt-fonte" id="tt-fonte"></div>
     </div>
-    <div class="tp-grid4">
-      <div class="tp-btn" data-type="d" data-val="7">7d</div>
-      <div class="tp-btn" data-type="d" data-val="15">15d</div>
-      <div class="tp-btn" data-type="d" data-val="20">20d</div>
-      <div class="tp-btn" data-type="d" data-val="30">30d</div>
-    </div>
-    <div class="tp-custom-btn" id="btn-custom">📅 Date personalizzate</div>
-    <div id="custom-box">
-      <div class="cd-lbl">Data inizio</div>
-      <input type="date" class="cd-inp" id="cd-from">
-      <div class="cd-lbl">Data fine</div>
-      <input type="date" class="cd-inp" id="cd-to">
-      <button class="cd-go" id="cd-apply">Applica</button>
-    </div>
-    <div id="tp-status"></div>
-    <div id="tp-spinner"><div class="mini-spin"></div><span>Caricamento…</span></div>
-  </div>
+    <div class="fonte-tag" id="fonte-tag">Fonte: ARPA Lombardia</div>
 
-  <div id="legend-panel">
-    <div class="leg-title" id="leg-title">mm cumulati</div>
-    <div class="grad"></div>
-    <div class="grad-l"><span>0</span><span>40</span><span>90</span><span>175</span><span>300+</span></div>
-    <div class="stats-row">
-      <div class="stat"><div class="sv" id="sn">–</div><div class="sl">Staz.</div></div>
-      <div class="stat"><div class="sv" id="smx">–</div><div class="sl">Max</div></div>
-      <div class="stat"><div class="sv" id="sav">–</div><div class="sl">Media</div></div>
-      <div class="stat"><div class="sv" id="smn">–</div><div class="sl">Min</div></div>
+    <!-- Pannelli: su desktop sovrapposti alla mappa via absolute -->
+    <div id="time-panel">
+      <div class="tp-title">🕒 Periodo</div>
+      <div class="tp-grid5">
+        <div class="tp-btn" data-type="h" data-val="1">1h</div>
+        <div class="tp-btn" data-type="h" data-val="3">3h</div>
+        <div class="tp-btn" data-type="h" data-val="6">6h</div>
+        <div class="tp-btn" data-type="h" data-val="12">12h</div>
+        <div class="tp-btn" data-type="h" data-val="24">24h</div>
+      </div>
+      <div class="tp-grid4">
+        <div class="tp-btn" data-type="d" data-val="7">7d</div>
+        <div class="tp-btn" data-type="d" data-val="15">15d</div>
+        <div class="tp-btn" data-type="d" data-val="20">20d</div>
+        <div class="tp-btn" data-type="d" data-val="30">30d</div>
+      </div>
+      <div class="tp-custom-btn" id="btn-custom">📅 Date personalizzate</div>
+      <div id="custom-box">
+        <div class="cd-lbl">Data inizio</div>
+        <input type="date" class="cd-inp" id="cd-from">
+        <div class="cd-lbl">Data fine</div>
+        <input type="date" class="cd-inp" id="cd-to">
+        <button class="cd-go" id="cd-apply">Applica</button>
+      </div>
+      <div id="tp-status"></div>
+      <div id="tp-spinner"><div class="mini-spin"></div><span>Caricamento…</span></div>
+    </div>
+
+    <div id="legend-panel">
+      <div class="leg-title" id="leg-title">mm cumulati</div>
+      <div class="grad"></div>
+      <div class="grad-l"><span>0</span><span>40</span><span>90</span><span>175</span><span>300+</span></div>
+      <div class="stats-row">
+        <div class="stat"><div class="sv" id="sn">–</div><div class="sl">Staz.</div></div>
+        <div class="stat"><div class="sv" id="smx">–</div><div class="sl">Max</div></div>
+        <div class="stat"><div class="sv" id="sav">–</div><div class="sl">Media</div></div>
+        <div class="stat"><div class="sv" id="smn">–</div><div class="sl">Min</div></div>
+      </div>
     </div>
   </div>
-
-  <div id="st-tooltip">
-    <div class="tt-nome" id="tt-nome"></div>
-    <div class="tt-big">
-      <span>💧</span>
-      <span class="tt-mm" id="tt-mm"></span>
-      <span class="tt-unit">mm</span>
-    </div>
-    <div class="tt-row"><span>Provincia</span><b id="tt-prov"></b></div>
-    <div class="tt-row"><span>Quota</span><b id="tt-quota"></b></div>
-    <div class="tt-row"><span>Ranking</span><b id="tt-rank"></b></div>
-    <div class="tt-fonte" id="tt-fonte"></div>
-  </div>
-
-  <div class="fonte-tag" id="fonte-tag">Fonte: ARPA Lombardia</div>
 </div>
 
 <div class="fonte">
@@ -667,7 +657,7 @@ map.on('zoomend',function(){if(gridPoints.length===0)return;if(drawTimer)clearTi
 // TOOLTIP
 // ═══════════════════════════════════════════════════════════════
 var tooltip=document.getElementById('st-tooltip');
-var mapEl=document.getElementById('map');
+var mapEl=document.getElementById('map-wrap');
 var hideTimer=null;
 
 function posTooltip(mx,my){
@@ -747,28 +737,18 @@ function render(dati,fonte,labelPeriodo){
 }
 
 function positionLegend(){
-  var isMobile=window.innerWidth<=600;
+  // Su mobile i pannelli sono statici (CSS), non serve posizionamento JS
+  if(window.innerWidth<=600) return;
+  // Desktop: posiziona legenda sotto il pannello periodo
+  var tp=document.getElementById('time-panel');
+  var tpB=tp.getBoundingClientRect().bottom;
+  var mapWrap=document.getElementById('map-wrap');
+  var mapT=mapWrap.getBoundingClientRect().top;
   var leg=document.getElementById('legend-panel');
-  if(isMobile){
-    // Su mobile: legenda fissa in alto sotto l'header
-    leg.style.top='46px';
-    leg.style.bottom='auto';
-    leg.style.left='0';
-    leg.style.right='0';
-    leg.style.borderRadius='0';
-    leg.style.width='100%';
-  } else {
-    // Desktop: sotto il pannello periodo
-    var tp=document.getElementById('time-panel');
-    var tpB=tp.getBoundingClientRect().bottom;
-    var mapT=mapEl.getBoundingClientRect().top;
-    leg.style.top=(tpB-mapT+10)+'px';
-    leg.style.left='10px';
-    leg.style.right='auto';
-    leg.style.bottom='auto';
-    leg.style.borderRadius='10px';
-    leg.style.width='280px';
-  }
+  leg.style.top=(tpB-mapT+10)+'px';
+  leg.style.left='10px';
+  leg.style.width='280px';
+  leg.style.borderRadius='10px';
 }
 
 function setLoading(on){
