@@ -102,25 +102,29 @@ h1{font-size:13px;font-weight:600;white-space:nowrap}
   border-radius:10px;padding:3px 12px;font-size:9px;color:#888;
   pointer-events:none;white-space:nowrap;}
 
-/* Logo canale stile ARPAL */
+/* Logo canale stile ARPAL — quadrato */
 #channel-logo{
   position:absolute;bottom:28px;right:10px;
   z-index:1000;
-  display:flex;align-items:center;gap:10px;
-  background:rgba(255,255,255,.55);
+  display:flex;align-items:center;gap:8px;
+  background:rgba(255,255,255,.60);
   border-radius:6px;
-  padding:7px 16px 7px 12px;
+  padding:8px 12px;
   text-decoration:none;
-  opacity:0.7;
+  opacity:0.75;
   transition:opacity .2s;
   white-space:nowrap;
 }
 #channel-logo:hover{opacity:1;}
-#channel-logo span{
-  font-size:16px;font-weight:700;
+#channel-logo .ch-text{
+  display:flex;flex-direction:column;align-items:flex-start;line-height:1.2;
+}
+#channel-logo .ch-text span{
+  font-size:13px;font-weight:700;
   color:#1a1a2e;
   letter-spacing:.01em;
   font-family:'Segoe UI',Arial,sans-serif;
+  display:block;
 }
 
 #loader{position:fixed;inset:0;background:rgba(255,255,255,.96);
@@ -264,11 +268,14 @@ h1{font-size:13px;font-weight:600;white-space:nowrap}
 
     <!-- Logo canale stile ARPAL — bottom right -->
     <a href="https://www.youtube.com/@avventuremicologiche" target="_blank" id="channel-logo">
-      <svg width="44" height="30" viewBox="0 0 44 30" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <rect width="44" height="30" rx="6" fill="#FF0000"/>
-        <polygon points="17,7 17,23 32,15" fill="white"/>
+      <svg width="36" height="36" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <rect width="36" height="36" rx="6" fill="#FF0000"/>
+        <polygon points="14,10 14,26 27,18" fill="white"/>
       </svg>
-      <span>Avventure Micologiche</span>
+      <div class="ch-text">
+        <span>Avventure</span>
+        <span>Micologiche</span>
+      </div>
     </a>
 
     <!-- Pannelli: su desktop sovrapposti alla mappa via absolute -->
@@ -608,7 +615,9 @@ function col(mm){var c=mmToRGB(mm);return'rgb('+c[0]+','+c[1]+','+c[2]+')';}
 // ═══════════════════════════════════════════════════════════════
 // MAPPA
 // ═══════════════════════════════════════════════════════════════
-var map=L.map('map').setView([45.65,9.85],8);
+var screenW=window.innerWidth;
+var initZoom = screenW<=480 ? 6 : screenW<=900 ? 7 : 8;
+var map=L.map('map').setView([45.65,9.85], initZoom);
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{
   maxZoom:18,subdomains:'abc',
   attribution:'© OpenStreetMap'
