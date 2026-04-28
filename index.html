@@ -930,13 +930,19 @@ function loadOpenMeteo(stations,pastDate,nowDate,labelPeriodo,badgePrefix){
     var lons=batch.map(function(s){return s.lon;}).join(',');
     var startDate=fmtDate(pastDate);
     var endDate=fmtDate(nowDate);
-    var startStr=startDate, endStr=endDate;
-
-    // Strategia: ≤92gg→Forecast, >92gg storico→Archive, >92gg recente→Archive+Forecast
     var days=Math.ceil(msRange/(24*3600000));
+    var isHourly=msRange<2*24*3600000; // periodi < 2 giorni → usa dati orari
     var cutoff=new Date(new Date().getTime()-6*24*3600000);
     var urls=[];
-    if(days<=92){
+
+    if(isHourly){
+      // Per ore: usa hourly precipitation con past_days=2
+      // così prendiamo le ultime 48h e filtriamo per ora esatta
+      urls.push('https://api.open-meteo.com/v1/forecast'
+        +'?latitude='+lats+'&longitude='+lons
+        +'&hourly=precipitation&timezone=Europe%2FRome'
+        +'&past_days=2&forecast_days=0');
+    } else if(days<=92){
       urls.push('https://api.open-meteo.com/v1/forecast'
         +'?latitude='+lats+'&longitude='+lons
         +'&daily=precipitation_sum&timezone=Europe%2FRome'
@@ -956,15 +962,34 @@ function loadOpenMeteo(stations,pastDate,nowDate,labelPeriodo,badgePrefix){
         +'&daily=precipitation_sum&timezone=Europe%2FRome'
         +'&past_days=6&forecast_days=0');
     }
+
+    var pastMs=pastDate.getTime();
+    var nowMs=nowDate.getTime();
+
     function processOM(data,acc){
       var arr=Array.isArray(data)?data:[data];
       arr.forEach(function(loc,i){
         var st=batch[i]; if(!st) return;
-        var daily=loc.daily; if(!daily||!daily.time) return;
-        for(var j=0;j<daily.time.length;j++){
-          if(daily.time[j]>=startStr&&daily.time[j]<=endStr){
-            var v=parseFloat(daily.precipitation_sum[j]);
-            if(!isNaN(v)&&v>0) acc[st.n]=(acc[st.n]||0)+v;
+        if(isHourly){
+          // Dati orari: filtra per timestamp esatto nel range
+          var hourly=loc.hourly; if(!hourly||!hourly.time) return;
+          var total=0;
+          for(var j=0;j<hourly.time.length;j++){
+            var t=new Date(hourly.time[j]).getTime();
+            if(t>=pastMs&&t<=nowMs){
+              var v=parseFloat(hourly.precipitation[j]);
+              if(!isNaN(v)&&v>0) total+=v;
+            }
+          }
+          acc[st.n]=(acc[st.n]||0)+total;
+        } else {
+          // Dati giornalieri: filtra per data stringa
+          var daily=loc.daily; if(!daily||!daily.time) return;
+          for(var j=0;j<daily.time.length;j++){
+            if(daily.time[j]>=startDate&&daily.time[j]<=endDate){
+              var v=parseFloat(daily.precipitation_sum[j]);
+              if(!isNaN(v)&&v>0) acc[st.n]=(acc[st.n]||0)+v;
+            }
           }
         }
       });
