@@ -1,1 +1,11 @@
+[build]
+  publish = "."
+
+[[redirects]]
+  from = "/api/arpa/*"
+  to = "/.netlify/functions/arpa"
+  status = 200
+
+[functions]
+  directory = "netlify/functions"
 
