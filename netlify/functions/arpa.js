@@ -1,17 +1,15 @@
-// Netlify Function: proxy per ARPA Lombardia
 exports.handler = async function(event) {
-  // Passa tutti i query parameters direttamente ad ARPA, tranne 'endpoint'
   const params = event.queryStringParameters || {};
   const endpoint = params.endpoint || 'nf78-nj6b.json';
   
-  // Rimuovi 'endpoint' dai params e ricostruisci la query string
-  const arpaParams = Object.entries(params)
+  // Ricostruisci query string passando i valori così come arrivano (già encodati dal browser)
+  const qs = Object.entries(params)
     .filter(([k]) => k !== 'endpoint')
-    .map(([k, v]) => `${k}=${encodeURIComponent(v)}`)
+    .map(([k, v]) => `${k}=${v}`)
     .join('&');
   
-  const url = `https://www.dati.lombardia.it/resource/${endpoint}${arpaParams ? '?' + arpaParams : ''}`;
-  console.log('Proxying to:', url);
+  const url = `https://www.dati.lombardia.it/resource/${endpoint}${qs ? '?' + qs : ''}`;
+  console.log('Proxy URL:', url);
   
   try {
     const response = await fetch(url, {
