@@ -2,13 +2,17 @@ exports.handler = async function(event) {
   const params = event.queryStringParameters || {};
   const endpoint = params.endpoint || 'nf78-nj6b.json';
   
-  // Ricostruisci query string passando i valori così come arrivano (già encodati dal browser)
-  const qs = Object.entries(params)
-    .filter(([k]) => k !== 'endpoint')
-    .map(([k, v]) => `${k}=${v}`)
-    .join('&');
+  // Costruisci URL ARPA con params decodificati e ri-encodati correttamente
+  const arpaBase = `https://www.dati.lombardia.it/resource/${endpoint}`;
+  const urlObj = new URL(arpaBase);
   
-  const url = `https://www.dati.lombardia.it/resource/${endpoint}${qs ? '?' + qs : ''}`;
+  Object.entries(params).forEach(([k, v]) => {
+    if (k !== 'endpoint') {
+      urlObj.searchParams.append(k, v);
+    }
+  });
+  
+  const url = urlObj.toString();
   console.log('Proxy URL:', url);
   
   try {
