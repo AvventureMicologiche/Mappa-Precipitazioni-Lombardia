@@ -244,7 +244,7 @@ h1{font-size:13px;font-weight:600;white-space:nowrap}
   <div class="hdr-l">
     <span style="font-size:18px">🌧</span>
     <div>
-      <h1>Precipitazioni Lombardia <span style="font-size:10px;font-weight:400;opacity:.6;letter-spacing:.05em;">(BETA V1.7)</span></h1>
+      <h1>Precipitazioni Lombardia <span style="font-size:10px;font-weight:400;opacity:.6;letter-spacing:.05em;">(BETA V1.8)</span></h1>
       <div class="hdr-sub" id="datehdr">Seleziona il periodo</div>
     </div>
   </div>
@@ -305,8 +305,12 @@ h1{font-size:13px;font-weight:600;white-space:nowrap}
         <div class="tp-grid4">
           <div class="tp-btn" data-type="d" data-val="7">7d</div>
           <div class="tp-btn" data-type="d" data-val="15">15d</div>
-          <div class="tp-btn" data-type="d" data-val="20">20d</div>
           <div class="tp-btn" data-type="d" data-val="30">30d</div>
+          <div class="tp-btn" data-type="m" data-val="3">3m</div>
+        </div>
+        <div class="tp-grid4">
+          <div class="tp-btn" data-type="m" data-val="6">6m</div>
+          <div class="tp-btn" data-type="m" data-val="12">1 anno</div>
         </div>
         <div class="tp-custom-btn" id="btn-custom">📅 Date personalizzate</div>
         <div id="custom-box">
@@ -337,7 +341,6 @@ h1{font-size:13px;font-weight:600;white-space:nowrap}
 
 <div class="fonte">
   Dati: <a href="https://www.dati.lombardia.it" target="_blank">ARPA Lombardia</a> ·
-  <a href="https://open-meteo.com" target="_blank">Open-Meteo</a> &nbsp;|&nbsp;
   Mappa: <a href="https://www.openstreetmap.org/copyright" target="_blank">© OpenStreetMap</a>
 </div>
 
@@ -1171,14 +1174,11 @@ function loadData(pastDate,nowDate,labelPeriodo){
   var d1=new Date(pastDate),d2=new Date(nowDate);
   function fmtD(d){return d.toLocaleDateString('it-IT',{day:'2-digit',month:'short',year:'numeric'});}
   document.getElementById('datehdr').textContent=fmtD(d1)+' – '+fmtD(d2);
-  document.getElementById('fonte-tag').textContent='Fonte: Open-Meteo / ARPA Lombardia';
+  document.getElementById('fonte-tag').textContent='Fonte: ARPA Lombardia';
 
-  // Usa Open-Meteo come fonte primaria (no CORS, sempre disponibile)
-  // Tenta anche ARPA in parallelo — se risponde sostituisce i dati con quelli live
-  var stazioni=ARPA_STATIONS||LOMBARDIA_STATIONS;
-  loadOpenMeteo(stazioni,pastDate,nowDate,labelPeriodo,'🌍');
-  // tryARPAUpgrade disabilitato — Open-Meteo è la fonte primaria
-  // // tryARPAUpgrade(pastDate,nowDate,labelPeriodo); // disabilitato
+  // ARPA è la fonte unica — proxy Netlify gestisce il CORS
+  // Fallback su Open-Meteo solo se ARPA non risponde
+  loadARPALombardia(pastDate,nowDate,labelPeriodo);
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -1279,6 +1279,10 @@ document.querySelectorAll('.tp-btn').forEach(function(btn){
       past=new Date(now.getTime()-val*3600000);
       var hL={1:'Ultima ora',3:'Ultime 3 ore',6:'Ultime 6 ore',12:'Ultime 12 ore',24:'Ultime 24 ore'};
       label=hL[val]||'Ultime '+val+' ore';
+    } else if(type==='m'){
+      past=new Date(now);
+      past.setMonth(past.getMonth()-val);
+      label='Ultimi '+val+(val===1?' mese':' mesi');
     } else {
       past.setDate(now.getDate()-val);
       label=val+' giorni';
@@ -1294,8 +1298,14 @@ document.getElementById('btn-custom').addEventListener('click',function(){
   this.classList.toggle('active',!open);
   if(!open){
     var now=new Date(),past=new Date();past.setDate(now.getDate()-30);
+    var minDate='2021-01-01';
+    var maxDate=fmtISOLocal(now);
     document.getElementById('cd-from').value=fmtISOLocal(past);
-    document.getElementById('cd-to').value=fmtISOLocal(now);
+    document.getElementById('cd-from').min=minDate;
+    document.getElementById('cd-from').max=maxDate;
+    document.getElementById('cd-to').value=maxDate;
+    document.getElementById('cd-to').min=minDate;
+    document.getElementById('cd-to').max=maxDate;
   }
   setTimeout(positionLegend,50);
 });
@@ -1306,6 +1316,11 @@ document.getElementById('cd-apply').addEventListener('click',function(){
   var to=document.getElementById('cd-to').value;
   if(!from||!to){alert('Seleziona entrambe le date');return;}
   if(from>to){alert('Data inizio deve essere prima della data fine');return;}
+  // Limite massimo 12 mesi
+  var diffMs=new Date(to+'T23:59:59').getTime()-new Date(from+'T00:00:00').getTime();
+  if(diffMs>365*24*3600000){alert('Il periodo massimo selezionabile è 12 mesi');return;}
+  // Limite storico: dal 1 gennaio 2021
+  if(from<'2021-01-01'){alert('I dati ARPA sono disponibili dal 1 gennaio 2021');return;}
   document.getElementById('custom-box').style.display='none';
   var pastDate=new Date(from+'T00:00:00');
   var nowDate=new Date(to+'T23:59:59');
