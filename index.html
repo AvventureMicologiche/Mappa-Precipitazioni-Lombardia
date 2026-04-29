@@ -1038,7 +1038,7 @@ function loadOpenMeteo(stations,pastDate,nowDate,labelPeriodo,badgePrefix){
       urls.push('https://api.open-meteo.com/v1/forecast'
         +'?latitude='+lats+'&longitude='+lons
         +'&hourly=precipitation&timezone=Europe%2FRome'
-        +'&past_days=2&forecast_days=0');
+        +'&past_days=3&forecast_days=1');
     } else if(days<=92){
       urls.push('https://api.open-meteo.com/v1/forecast'
         +'?latitude='+lats+'&longitude='+lons
@@ -1068,31 +1068,31 @@ function loadOpenMeteo(stations,pastDate,nowDate,labelPeriodo,badgePrefix){
       arr.forEach(function(loc,i){
         var st=batch[i]; if(!st) return;
         if(isHourly){
-          // Open-Meteo restituisce timestamp locali Europe/Rome SENZA offset
-          // es. "2026-04-29T06:00" — dobbiamo confrontarli in ora locale
-          // Convertiamo pastMs e nowMs in ora locale italiana (UTC+2 ora legale)
+          // Open-Meteo restituisce "2026-04-29T06:00" in ora locale Europe/Rome
+          // JavaScript Date() in ora locale:
+          // new Date(2026,3,29,6,0) = 29 apr ore 6:00 ora locale
           var hourly=loc.hourly; if(!hourly||!hourly.time) return;
           var total=0;
-          // Offset Italia: UTC+2 in ora legale, UTC+1 in ora solare
-          // Usiamo getTimezoneOffset() del browser che conosce l'ora locale corretta
-          var localOffset=-pastDate.getTimezoneOffset()*60000; // ms da UTC a locale
-          var pastLocal=new Date(pastMs+localOffset);
-          var nowLocal=new Date(nowMs+localOffset);
-          // Formatta per confronto stringa: "YYYY-MM-DDTHH:MM"
-          function toLocalStr(d){
+          // Converti pastDate/nowDate in stringa locale "YYYY-MM-DDTHH:MM"
+          function toLocalISO(d){
             var p=function(n){return String(n).padStart(2,'0');};
-            return d.getUTCFullYear()+'-'+p(d.getUTCMonth()+1)+'-'+p(d.getUTCDate())
-              +'T'+p(d.getUTCHours())+':'+p(d.getUTCMinutes());
+            return d.getFullYear()+'-'+p(d.getMonth()+1)+'-'+p(d.getDate())
+              +'T'+p(d.getHours())+':'+p(d.getMinutes());
           }
-          var pastStr=toLocalStr(pastLocal);
-          var nowStr=toLocalStr(nowLocal);
+          // Aggiungi 1h di margine per coprire sfasamenti di timezone
+          var pastWithMargin=new Date(pastDate.getTime()-3600000);
+          var nowWithMargin=new Date(nowDate.getTime()+3600000);
+          var pastStr=toLocalISO(pastWithMargin);
+          var nowStr=toLocalISO(nowWithMargin);
+          console.log('[OM hourly] range:',pastStr,'->',nowStr);
           for(var j=0;j<hourly.time.length;j++){
-            var tStr=hourly.time[j]; // es. "2026-04-29T06:00"
+            var tStr=hourly.time[j].substring(0,16); // "2026-04-29T06:00"
             if(tStr>=pastStr&&tStr<=nowStr){
               var v=parseFloat(hourly.precipitation[j]);
               if(!isNaN(v)&&v>0) total+=v;
             }
           }
+          console.log('[OM]',batch[i]&&batch[i].n,'total:',total,'mm');
           acc[st.n]=(acc[st.n]||0)+total;
         } else {
           // Dati giornalieri: filtra per data stringa
