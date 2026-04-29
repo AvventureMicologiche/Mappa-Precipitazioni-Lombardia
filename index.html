@@ -997,7 +997,7 @@ function loadOpenMeteo(stations,pastDate,nowDate,labelPeriodo,badgePrefix){
   var useArchive=msRange>days7;
 
   // Raggruppa stazioni in batch da 10 (limit API)
-  var BATCH=10;
+  var BATCH=50;
   var batches=[];
   for(var i=0;i<stations.length;i+=BATCH){
     batches.push(stations.slice(i,i+BATCH));
