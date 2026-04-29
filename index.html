@@ -813,10 +813,19 @@ function setLoading(on){
 // ═══════════════════════════════════════════════════════════════
 // DATA SOURCE: ARPA LOMBARDIA
 // ═══════════════════════════════════════════════════════════════
-function toUTCISO(d){
+// ARPA usa "ora solare" = UTC+1 fisso (non ora legale)
+// Convertiamo i nostri timestamp in UTC+1 sottraendo 1h rispetto all'ora locale
+// (in estate siamo UTC+2, quindi UTC+2 - 1 = UTC+1 = ora solare ARPA)
+function toARPAISO(d){
   var p=function(n){return String(n).padStart(2,'0');};
-  return d.getUTCFullYear()+'-'+p(d.getUTCMonth()+1)+'-'+p(d.getUTCDate())
-    +'T'+p(d.getUTCHours())+':'+p(d.getUTCMinutes())+':00';
+  // Offset locale in ms (es. UTC+2 = -120 min)
+  var localOffsetMs = d.getTimezoneOffset()*60000; // negativo se est di UTC
+  // ARPA è sempre UTC+1 = -60 min di offset
+  var arpaOffsetMs = -60*60000;
+  // Converte: d (locale) -> UTC -> UTC+1
+  var arpaTime = new Date(d.getTime() + localOffsetMs + arpaOffsetMs);
+  return arpaTime.getFullYear()+'-'+p(arpaTime.getMonth()+1)+'-'+p(arpaTime.getDate())
+    +'T'+p(arpaTime.getHours())+':'+p(arpaTime.getMinutes())+':00';
 }
 
 function loadARPALombardia(pastDate,nowDate,labelPeriodo){
@@ -826,7 +835,7 @@ function loadARPALombardia(pastDate,nowDate,labelPeriodo){
     +"&$where=tipologiasensore='Pioggia'";
   var prUrl='https://www.dati.lombardia.it/resource/pstb-pga6.json'
     +'?$select=idsensore,sum(valore)%20as%20tot'
-    +'&$where=data%20between%20%27'+toUTCISO(pastDate)+'%27%20and%20%27'+toUTCISO(nowDate)+'%27'
+    +'&$where=data%20between%20%27'+toARPAISO(pastDate)+'%27%20and%20%27'+toARPAISO(nowDate)+'%27'
     +'&$group=idsensore&$limit=5000';
 
   var arpaTimeout=new Promise(function(_,rej){setTimeout(function(){rej(new Error('timeout'));},8000);});
@@ -952,12 +961,27 @@ function loadOpenMeteo(stations,pastDate,nowDate,labelPeriodo,badgePrefix){
       arr.forEach(function(loc,i){
         var st=batch[i]; if(!st) return;
         if(isHourly){
-          // Dati orari: filtra per timestamp esatto nel range
+          // Open-Meteo restituisce timestamp locali Europe/Rome SENZA offset
+          // es. "2026-04-29T06:00" — dobbiamo confrontarli in ora locale
+          // Convertiamo pastMs e nowMs in ora locale italiana (UTC+2 ora legale)
           var hourly=loc.hourly; if(!hourly||!hourly.time) return;
           var total=0;
+          // Offset Italia: UTC+2 in ora legale, UTC+1 in ora solare
+          // Usiamo getTimezoneOffset() del browser che conosce l'ora locale corretta
+          var localOffset=-pastDate.getTimezoneOffset()*60000; // ms da UTC a locale
+          var pastLocal=new Date(pastMs+localOffset);
+          var nowLocal=new Date(nowMs+localOffset);
+          // Formatta per confronto stringa: "YYYY-MM-DDTHH:MM"
+          function toLocalStr(d){
+            var p=function(n){return String(n).padStart(2,'0');};
+            return d.getUTCFullYear()+'-'+p(d.getUTCMonth()+1)+'-'+p(d.getUTCDate())
+              +'T'+p(d.getUTCHours())+':'+p(d.getUTCMinutes());
+          }
+          var pastStr=toLocalStr(pastLocal);
+          var nowStr=toLocalStr(nowLocal);
           for(var j=0;j<hourly.time.length;j++){
-            var t=new Date(hourly.time[j]).getTime();
-            if(t>=pastMs&&t<=nowMs){
+            var tStr=hourly.time[j]; // es. "2026-04-29T06:00"
+            if(tStr>=pastStr&&tStr<=nowStr){
               var v=parseFloat(hourly.precipitation[j]);
               if(!isNaN(v)&&v>0) total+=v;
             }
