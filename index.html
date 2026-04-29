@@ -244,7 +244,7 @@ h1{font-size:13px;font-weight:600;white-space:nowrap}
   <div class="hdr-l">
     <span style="font-size:18px">🌧</span>
     <div>
-      <h1>Precipitazioni Lombardia <span style="font-size:10px;font-weight:400;opacity:.6;letter-spacing:.05em;">(BETA V1.8)</span></h1>
+      <h1>Precipitazioni Lombardia <span style="font-size:10px;font-weight:400;opacity:.6;letter-spacing:.05em;">(BETA V1.9)</span></h1>
       <div class="hdr-sub" id="datehdr">Seleziona il periodo</div>
     </div>
   </div>
@@ -306,12 +306,9 @@ h1{font-size:13px;font-weight:600;white-space:nowrap}
           <div class="tp-btn" data-type="d" data-val="7">7d</div>
           <div class="tp-btn" data-type="d" data-val="15">15d</div>
           <div class="tp-btn" data-type="d" data-val="30">30d</div>
-          <div class="tp-btn" data-type="m" data-val="3">3m</div>
+
         </div>
-        <div class="tp-grid4">
-          <div class="tp-btn" data-type="m" data-val="6">6m</div>
-          <div class="tp-btn" data-type="m" data-val="12">1 anno</div>
-        </div>
+
         <div class="tp-custom-btn" id="btn-custom">📅 Date personalizzate</div>
         <div id="custom-box">
           <div class="cd-lbl">Data inizio</div>
@@ -940,23 +937,21 @@ function tryARPAUpgrade(pastDate,nowDate,labelPeriodo){
       if(!isNaN(lat)&&!isNaN(lon)&&lat>44&&lat<47&&lon>7&&lon<12)
         stMap[s.idsensore]={n:s.nomestazione,lat:lat,lon:lon,q:s.quota||0,p:s.provincia||'—'};
     });
-    // Aggiorna ARPA_STATIONS con dati freschi
-    ARPA_STATIONS=Object.values(stMap);
+    if(Object.keys(stMap).length>5) ARPA_STATIONS=Object.values(stMap);
     var rainMap={};
     res[1].forEach(function(pr){
       var mm=parseFloat(pr.tot);
       if(!isNaN(mm)&&mm>=0) rainMap[pr.idsensore]=mm;
     });
-    var out=[];
-    Object.keys(stMap).forEach(function(id){
+    var allSt=Object.keys(stMap).map(function(id){
       var st=stMap[id];
       var mm=rainMap[id]||0;
-      out.push({n:st.n,lat:st.lat,lon:st.lon,q:st.q,p:st.p,
-                mm:mm<0.5?0:Math.round(mm*10)/10});
+      return {n:st.n,lat:st.lat,lon:st.lon,q:st.q,p:st.p,
+              mm:mm<0.5?0:Math.round(mm*10)/10};
     });
+    var out=selectUniform(allSt,200);
     if(out.length>=5){
-      console.log('[ARPA] upgrade OK:',out.length,'stazioni');
-      // Aggiorna la mappa con dati ARPA live
+      console.log('[ARPA] OK:',allSt.length,'->',out.length,'stazioni');
       clearMarkers();
       clearHeatmap();
       render(out,'🟢 ARPA live',labelPeriodo);
@@ -1378,9 +1373,6 @@ setRegionBorder('lombardia',function(){
           });
         }
       });
-      // Selezione geografica uniforme: divide la Lombardia in griglia
-      // e seleziona max N stazioni per cella
-      stazioni=selectUniform(stazioni,200);
       if(stazioni.length>=5){
         ARPA_STATIONS=stazioni;
         console.log('[ARPA] Stazioni caricate:',stazioni.length);
