@@ -1147,8 +1147,8 @@ function loadData(pastDate,nowDate,labelPeriodo){
   // Tenta anche ARPA in parallelo — se risponde sostituisce i dati con quelli live
   var stazioni=ARPA_STATIONS||LOMBARDIA_STATIONS;
   loadOpenMeteo(stazioni,pastDate,nowDate,labelPeriodo,'🌍');
-  // Tenta ARPA in parallelo con timeout breve
-  tryARPAUpgrade(pastDate,nowDate,labelPeriodo);
+  // tryARPAUpgrade disabilitato — Open-Meteo è la fonte primaria
+  // // tryARPAUpgrade(pastDate,nowDate,labelPeriodo); // disabilitato
 }
 
 // ═══════════════════════════════════════════════════════════════
