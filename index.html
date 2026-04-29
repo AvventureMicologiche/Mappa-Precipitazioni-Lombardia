@@ -888,7 +888,7 @@ function tryARPAUpgrade(pastDate,nowDate,labelPeriodo){
   // Tenta ARPA live — se risponde entro 6s, aggiorna i dati già mostrati
   // Usa proxy Netlify per evitare CORS con ARPA
   var BASE='/.netlify/functions/arpa';
-  var stUrl=BASE+'?endpoint=nf78-nj6b.json&$limit=600&$select=idsensore,nomestazione,lat,lng,quota,provincia,tipologiasensore';
+  var stUrl=BASE+'?endpoint=nf78-nj6b.json&$limit=600&$select=idsensore,nomestazione,lat,lng,quota,provincia';
   var prUrl=BASE+'?endpoint=pstb-pga6.json&$select=idsensore,sum(valore)%20as%20tot&$where=data%20between%20%27'+toARPAISO(pastDate)+'%27%20and%20%27'+toARPAISO(nowDate)+'%27&$group=idsensore&$limit=5000';
   var timeout=new Promise(function(_,rej){setTimeout(function(){rej(new Error('timeout'));},6000);});
   Promise.race([
@@ -937,7 +937,7 @@ function tryARPAUpgrade(pastDate,nowDate,labelPeriodo){
 function loadARPALombardia(pastDate,nowDate,labelPeriodo){
   // Prima tenta ARPA con timeout 8s, altrimenti Open-Meteo (dati reali, no CORS)
   var BASE='/.netlify/functions/arpa';
-  var stUrl=BASE+'?endpoint=nf78-nj6b.json&$limit=600&$select=idsensore,nomestazione,lat,lng,quota,provincia,tipologiasensore';
+  var stUrl=BASE+'?endpoint=nf78-nj6b.json&$limit=600&$select=idsensore,nomestazione,lat,lng,quota,provincia';
   var prUrl=BASE+'?endpoint=pstb-pga6.json&$select=idsensore,sum(valore)%20as%20tot&$where=data%20between%20%27'+toARPAISO(pastDate)+'%27%20and%20%27'+toARPAISO(nowDate)+'%27&$group=idsensore&$limit=5000';
 
   var arpaTimeout=new Promise(function(_,rej){setTimeout(function(){rej(new Error('timeout'));},8000);});
@@ -1317,7 +1317,7 @@ window.addEventListener('resize', function(){
 setRegionBorder('lombardia',function(){
   // Prima carica l'elenco ufficiale stazioni ARPA, poi mostra la mappa
   document.getElementById('lmsg').textContent='Caricamento stazioni ARPA…';
-  var stUrl='/.netlify/functions/arpa?endpoint=nf78-nj6b.json&$limit=600&$select=idsensore,nomestazione,lat,lng,quota,provincia,tipologiasensore';
+  var stUrl='/.netlify/functions/arpa?endpoint=nf78-nj6b.json&$limit=600&$select=idsensore,nomestazione,lat,lng,quota,provincia';
   fetch(stUrl)
     .then(function(r){if(!r.ok)throw new Error('HTTP');return r.json();})
     .then(function(data){
@@ -1383,4 +1383,4 @@ function loadDefaultMarkers(){
 }());
 </script>
 </body>
-</html> 
+</html>
