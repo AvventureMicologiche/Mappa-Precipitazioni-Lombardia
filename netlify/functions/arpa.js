@@ -1,38 +1,29 @@
 // Netlify Function: proxy per ARPA Lombardia
-// Risolve il problema CORS permettendo al browser di chiamare ARPA tramite questo server
-
 exports.handler = async function(event) {
-  const BASE = 'https://www.dati.lombardia.it/resource';
-  
-  // Prendi l'endpoint e i parametri dalla query string
+  // Passa tutti i query parameters direttamente ad ARPA, tranne 'endpoint'
   const params = event.queryStringParameters || {};
   const endpoint = params.endpoint || 'nf78-nj6b.json';
   
-  // Costruisci URL ARPA con tutti i parametri passati (escluso 'endpoint')
-  const queryParams = Object.entries(params)
+  // Rimuovi 'endpoint' dai params e ricostruisci la query string
+  const arpaParams = Object.entries(params)
     .filter(([k]) => k !== 'endpoint')
-    .map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(v)}`)
+    .map(([k, v]) => `${k}=${encodeURIComponent(v)}`)
     .join('&');
   
-  const url = `${BASE}/${endpoint}${queryParams ? '?' + queryParams : ''}`;
+  const url = `https://www.dati.lombardia.it/resource/${endpoint}${arpaParams ? '?' + arpaParams : ''}`;
+  console.log('Proxying to:', url);
   
   try {
     const response = await fetch(url, {
-      headers: {
-        'Accept': 'application/json',
-        'X-App-Token': '' // opzionale, aumenta rate limit se aggiunto
-      }
+      headers: { 'Accept': 'application/json' }
     });
-    
     const data = await response.text();
-    
     return {
       statusCode: response.status,
       headers: {
         'Content-Type': 'application/json',
         'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Headers': 'Content-Type',
-        'Cache-Control': 'public, max-age=60' // cache 1 minuto
+        'Cache-Control': 'public, max-age=60'
       },
       body: data
     };
@@ -44,4 +35,3 @@ exports.handler = async function(event) {
     };
   }
 };
-
