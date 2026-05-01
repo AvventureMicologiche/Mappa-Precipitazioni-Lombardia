@@ -917,12 +917,9 @@ function toARPAISO(d){
 }
 
 function tryARPAUpgrade(pastDate,nowDate,labelPeriodo){
-  // Tenta ARPA live — se risponde entro 6s, aggiorna i dati già mostrati
-  // Usa proxy Netlify per evitare CORS con ARPA
-  var BASE='/.netlify/functions/arpa';
-  var stUrl=BASE+'?endpoint=nf78-nj6b.json&$limit=500&$select=idsensore,nomestazione,lat,lng,quota,provincia&$where=tipologia=%27Precipitazione%27';
-  var prUrl=BASE+'?endpoint=647i-nhxk.json&$select=idsensore,sum(valore)%20as%20tot&$where=data%20between%20%27'+toARPAISO(pastDate)+'%27%20and%20%27'+toARPAISO(nowDate)+'%27&$group=idsensore&$limit=5000';
-  var timeout=new Promise(function(_,rej){setTimeout(function(){rej(new Error('timeout'));},6000);});
+  // Disabilitata: loadARPALombardia gestisce gia' tutto con OR-chain e cache localStorage
+  return;
+},6000);});
   Promise.race([
     Promise.all([fetch(stUrl),fetch(prUrl)]).then(function(rs){
       if(!rs[0].ok||!rs[1].ok) throw new Error('HTTP');
@@ -1091,10 +1088,12 @@ function loadARPALombardia(pastDate,nowDate,labelPeriodo){
     var timeout=new Promise(function(_,rej){setTimeout(function(){rej(new Error('timeout'));},25000);});
 
     var fetches=batches.map(function(batchIds){
-      var inClause=encodeURIComponent(' AND idsensore IN('+batchIds.join(',')+')');
+      // idsensore e' tipo number in 647i-nhxk: va quotato con ' e usato OR invece di IN
+      var orClause=batchIds.map(function(id){return "idsensore='"+id+"'";}).join(' OR ');
+      var whereStr="data between '"+toARPAISO(qStart)+"' and '"+toARPAISO(qEnd)+"' AND ("+orClause+')';
       var url=BASE+'?endpoint=647i-nhxk.json'
-        +'&$select=idsensore,sum(valore)%20as%20tot'
-        +'&$where='+dateWhere+inClause
+        +'&$select=idsensore,max(valore)%20as%20mx,min(valore)%20as%20mn'
+        +'&$where='+encodeURIComponent(whereStr)
         +'&$group=idsensore&$limit=5000';
       return fetch(url).then(function(r){
         if(!r.ok) throw new Error('HTTP '+r.status);
@@ -1105,21 +1104,21 @@ function loadARPALombardia(pastDate,nowDate,labelPeriodo){
     return Promise.race([
       Promise.all(fetches).then(function(results){
         var misure=results[0].concat(results[1]);
-        // Salva in cache per ogni mese fetchato (eccetto mese corrente parziale)
+        // Converti mx/mn in tot: max-min = mm caduti nel periodo
+        misure=misure.map(function(pr){
+          var mx=parseFloat(pr.mx)||0;
+          var mn=parseFloat(pr.mn)||0;
+          return {idsensore:pr.idsensore, tot:Math.max(0,mx-mn)};
+        });
+        // Salva in cache
         misure.forEach(function(pr){
           monthList.forEach(function(mo){
             var isCurrentMonth=(mo.y===now_year()&&mo.m===now_month());
-            // Per mesi passati completi salva in cache
-            if(!isCurrentMonth){
-              cacheSet(pr.idsensore,mo.y,mo.m,parseFloat(pr.tot)||0);
-            }
+            if(!isCurrentMonth) cacheSet(pr.idsensore,mo.y,mo.m,pr.tot);
           });
-          // Mese corrente: salva comunque con timestamp per la scadenza 6h
           var lastMoCurr=monthList[monthList.length-1];
-          var isLastCurrent=(lastMoCurr.y===now_year()&&lastMoCurr.m===now_month());
-          if(isLastCurrent){
-            cacheSet(pr.idsensore,lastMoCurr.y,lastMoCurr.m,parseFloat(pr.tot)||0);
-          }
+          if(lastMoCurr.y===now_year()&&lastMoCurr.m===now_month())
+            cacheSet(pr.idsensore,lastMoCurr.y,lastMoCurr.m,pr.tot);
         });
         return misure;
       }),
