@@ -866,7 +866,6 @@ function render(dati,fonte,labelPeriodo){
   positionLegend();
   addMarkers(dati,sorted);
   var hasRain=dati.some(function(s){return s.mm>0;});
-  console.log('[render] dati:',dati.length,'hasRain:',hasRain,'max:',Math.max.apply(null,dati.map(function(d){return d.mm;})));
   document.getElementById('tp-status').textContent=hasRain?'⏳ Calcolo mappa…':'✅ Nessuna pioggia';
   setTimeout(function(){
     initCanvas();
@@ -998,9 +997,8 @@ function loadARPALombardia(pastDate,nowDate,labelPeriodo){
                   mm:mm<0.5?0:Math.round(mm*10)/10});
       });
       if(out.length<5) throw new Error('pochi dati');
-      var outU=selectUniform(out,200);
-      console.log('[ARPA] OK, stazioni:',out.length,'->',outU.length,'(uniform)');
-      render(outU,'🟢 ARPA live',labelPeriodo);
+      console.log('[ARPA] OK, stazioni:',out.length);
+      render(out,'🟢 ARPA live',labelPeriodo);
     })
     .catch(function(e){
       console.warn('[ARPA] fallback Open-Meteo:',e.message);
