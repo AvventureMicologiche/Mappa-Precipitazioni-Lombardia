@@ -963,21 +963,41 @@ function tryARPAUpgrade(pastDate,nowDate,labelPeriodo){
 }
 
 function loadARPALombardia(pastDate,nowDate,labelPeriodo){
-  // Prima tenta ARPA con timeout 8s, altrimenti Open-Meteo (dati reali, no CORS)
   var BASE='/.netlify/functions/arpa';
   var stUrl=BASE+'?endpoint=nf78-nj6b.json&$limit=500&$select=idsensore,nomestazione,lat,lng,quota,provincia&$where=tipologia=%27Precipitazione%27';
-  var prUrl=BASE+'?endpoint=647i-nhxk.json&$select=idsensore,sum(valore)%20as%20tot&$where=data%20between%20%27'+toARPAISO(pastDate)+'%27%20and%20%27'+toARPAISO(nowDate)+'%27&$group=idsensore&$limit=5000';
 
-  var arpaTimeout=new Promise(function(_,rej){setTimeout(function(){rej(new Error('timeout'));},8000);});
+  // Step 1: carica stazioni pluviometriche
+  fetch(stUrl)
+    .then(function(r){if(!r.ok)throw new Error('HTTP '+r.status);return r.json();})
+    .then(function(stazioni){
+      var stMap={};
+      stazioni.forEach(function(s){
+        var lat=parseFloat(s.lat),lon=parseFloat(s.lng);
+        if(!isNaN(lat)&&!isNaN(lon)&&lat>44&&lat<47&&lon>7&&lon<12)
+          stMap[s.idsensore]={n:s.nomestazione||'—',lat:lat,lon:lon,q:s.quota||0,p:s.provincia||'—'};
+      });
+      if(Object.keys(stMap).length<5) throw new Error('poche stazioni');
+      if(Object.keys(stMap).length>5) ARPA_STATIONS=Object.values(stMap);
 
-  Promise.race([
-    Promise.all([fetch(stUrl),fetch(prUrl)]).then(function(rs){
-      if(!rs[0].ok||!rs[1].ok) throw new Error('HTTP '+rs[1].status);
-      return Promise.all([rs[0].json(),rs[1].json()]);
-    }),
-    arpaTimeout
-  ])
+      // Step 2: query misure SOLO per gli idsensore pluviometrici
+      var ids=Object.keys(stMap).join(',');
+      var BASE2='/.netlify/functions/arpa';
+      var prUrl=BASE2+'?endpoint=647i-nhxk.json'
+        +'&$select=idsensore,sum(valore)%20as%20tot'
+        +'&$where=data%20between%20%27'+toARPAISO(pastDate)+'%27%20and%20%27'+toARPAISO(nowDate)+'%27'
+        +encodeURIComponent(' AND idsensore IN('+ids+')')
+        +'&$group=idsensore&$limit=5000';
+
+      var timeout=new Promise(function(_,rej){setTimeout(function(){rej(new Error('timeout'));},25000);});
+
+      return Promise.race([
+        fetch(prUrl).then(function(r){if(!r.ok)throw new Error('HTTP '+r.status);return r.json();}),
+        timeout
+      ]).then(function(misure){return {stMap:stMap, misure:misure};});
+    })
     .then(function(res){
+      var stMap=res.stMap;
+      var misure=res.misure;
       var stMap={};
       res[0].forEach(function(s){
         var lat=parseFloat(s.lat),lon=parseFloat(s.lng);
