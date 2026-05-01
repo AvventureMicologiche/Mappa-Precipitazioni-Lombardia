@@ -38,7 +38,7 @@ h1{font-size:13px;font-weight:600;white-space:nowrap}
 #legend-panel{padding:11px 14px;display:none;}
 
 /* Pulsanti periodo */
-.tp-title{font-size:11px;font-weight:700;color:#1b3f6e;
+.tp-title{font-size:13px;font-weight:700;color:#1b3f6e;
   text-transform:uppercase;letter-spacing:.07em;margin-bottom:9px;
   display:flex;align-items:center;gap:5px}
 .tp-grid5{display:grid;grid-template-columns:repeat(5,1fr);gap:4px;margin-bottom:4px}
@@ -639,7 +639,7 @@ if(screenW<=480){
 } else {
   initZoom = 8.5;  // desktop: era 8, ora 8.5
 }
-var initCenter=(screenW<=600)?[45.85,9.85]:[45.55,9.85];
+var initCenter=(screenW<=600)?[45.15,9.85]:[45.55,9.85];
 var map=L.map('map',{zoomSnap:0.5,zoomDelta:0.5}).setView(initCenter, initZoom);
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{
   maxZoom:19,subdomains:'abc',
