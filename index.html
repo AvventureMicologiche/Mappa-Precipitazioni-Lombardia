@@ -923,79 +923,69 @@ function tryARPAUpgrade(pastDate,nowDate,labelPeriodo){
 
 // ═══════════════════════════════════════════════════════════════
 // CACHE localStorage — Punto 2
-// Chiave: arpa_YYYY-MM_<idsensore>  Valore: {tot, ts}
-// Mese corrente: scade dopo 6 ore
-// Mesi passati: non scadono mai
-// Dati >12 mesi: cancellati al boot
+// Chiave: arpa_<startISO>_<endISO>_<idsensore>
+// Il range esatto e' parte della chiave: nessun rischio di doppio conteggio
+// Range che non include l'ora corrente: non scadono mai (oltre 12 mesi: cancellati)
+// Range che include l'ora corrente (dati parziali): scade dopo 6 ore
 // ═══════════════════════════════════════════════════════════════
-var CACHE_PREFIX='arpa_';
+var CACHE_PREFIX='arpa2_';
 var CACHE_6H=6*3600*1000;
 
-function cacheKey(idsensore,yyyy,mm){
-  return CACHE_PREFIX+yyyy+'-'+(mm<10?'0':'')+mm+'_'+idsensore;
+function cacheRangeKey(idsensore,startISO,endISO){
+  // Chiave compatta: prefix + start(solo data) + end(solo data) + id
+  var s=startISO.substring(0,10);
+  var e=endISO.substring(0,10);
+  return CACHE_PREFIX+s+'_'+e+'_'+idsensore;
 }
 
-function cacheGet(idsensore,yyyy,mm){
+function cacheRangeGet(idsensore,startISO,endISO,includesNow){
   try{
-    var raw=localStorage.getItem(cacheKey(idsensore,yyyy,mm));
+    var raw=localStorage.getItem(cacheRangeKey(idsensore,startISO,endISO));
     if(!raw) return null;
     var obj=JSON.parse(raw);
-    // Mese corrente: scade dopo 6h
-    var now=Date.now();
-    var isCurrentMonth=(yyyy===now_year()&&mm===now_month());
-    if(isCurrentMonth&&(now-obj.ts)>CACHE_6H) return null;
+    if(includesNow&&(Date.now()-obj.ts)>CACHE_6H) return null;
     return obj.tot;
   }catch(e){return null;}
 }
 
-function cacheSet(idsensore,yyyy,mm,tot){
+function cacheRangeSet(idsensore,startISO,endISO,tot){
   try{
-    localStorage.setItem(cacheKey(idsensore,yyyy,mm),JSON.stringify({tot:tot,ts:Date.now()}));
+    var k=cacheRangeKey(idsensore,startISO,endISO);
+    localStorage.setItem(k,JSON.stringify({tot:tot,ts:Date.now()}));
   }catch(e){
-    // localStorage pieno: pulisci vecchi e riprova
     cachePurgeOld();
-    try{localStorage.setItem(cacheKey(idsensore,yyyy,mm),JSON.stringify({tot:tot,ts:Date.now()}));}catch(e2){}
+    try{
+      var k=cacheRangeKey(idsensore,startISO,endISO);
+      localStorage.setItem(k,JSON.stringify({tot:tot,ts:Date.now()}));
+    }catch(e2){}
   }
 }
 
-function now_year(){return new Date().getFullYear();}
-function now_month(){return new Date().getMonth()+1;}
-
 function cachePurgeOld(){
-  // Cancella dati più vecchi di 12 mesi
   var cutoff=new Date();
   cutoff.setMonth(cutoff.getMonth()-12);
-  var cutStr=cutoff.getFullYear()+'-'+(cutoff.getMonth()+1<10?'0':'')+(cutoff.getMonth()+1);
+  var cutStr=cutoff.toISOString().substring(0,10);
   try{
     Object.keys(localStorage).forEach(function(k){
       if(k.indexOf(CACHE_PREFIX)===0){
-        var part=k.replace(CACHE_PREFIX,'').split('_')[0]; // YYYY-MM
-        if(part<cutStr) localStorage.removeItem(k);
+        var dateStr=k.replace(CACHE_PREFIX,'').split('_')[0];
+        if(dateStr<cutStr) localStorage.removeItem(k);
       }
     });
   }catch(e){}
 }
 
-// Genera lista di mesi nel range pastDate→nowDate
-function monthsInRange(pastDate,nowDate){
-  var months=[];
-  var d=new Date(pastDate.getFullYear(),pastDate.getMonth(),1);
-  var end=new Date(nowDate.getFullYear(),nowDate.getMonth(),1);
-  while(d<=end){
-    months.push({y:d.getFullYear(),m:d.getMonth()+1});
-    d.setMonth(d.getMonth()+1);
-  }
-  return months;
-}
+function now_year(){return new Date().getFullYear();}
+function now_month(){return new Date().getMonth()+1;}
 
-// Somma i totali mensili parziali nel range esatto pastDate→nowDate
-// Per il primo e l'ultimo mese la query ARPA usa l'intervallo esatto
-// Per i mesi intermedi usa la cache del mese intero
 function loadARPALombardia(pastDate,nowDate,labelPeriodo){
-  // Pulizia cache vecchia al boot/click
   cachePurgeOld();
 
   var BASE='/.netlify/functions/arpa';
+  var startISO=toARPAISO(pastDate);
+  var endISO=toARPAISO(nowDate);
+  // Il range include dati recenti se nowDate e' vicino ad ora
+  var includesNow=(nowDate.getTime()>Date.now()-3600000);
 
   var stazioni=ARPA_STATIONS||LOMBARDIA_STATIONS;
   var stMap={};
@@ -1008,51 +998,30 @@ function loadARPALombardia(pastDate,nowDate,labelPeriodo){
     });
   }
   var needFetch=Object.keys(stMap).length<5;
-
-  // Determina quali mesi richiedono query ARPA (non in cache)
-  var months=monthsInRange(pastDate,nowDate);
   var allIds=Object.keys(stMap);
 
-  // Per ogni mese controlla se tutti i sensori sono in cache
-  // Se il mese ha anche solo un sensore mancante, va refetchato
-  var monthsToFetch=months.filter(function(mo){
-    // Mese corrente: sempre refetch (dati parziali, scadenza 6h già gestita in cacheGet)
-    var isCurrentMonth=(mo.y===now_year()&&mo.m===now_month());
-    if(isCurrentMonth) return true;
-    // Mesi passati: controlla cache
-    return allIds.some(function(id){return cacheGet(id,mo.y,mo.m)===null;});
+  // Controlla cache per l'intero range (chiave unica per range+sensore)
+  var cachedIds=[];
+  var uncachedIds=[];
+  allIds.forEach(function(id){
+    var v=cacheRangeGet(id,startISO,endISO,includesNow);
+    if(v!==null) cachedIds.push({id:id,tot:v});
+    else uncachedIds.push(id);
   });
 
-  var cachedMonths=months.filter(function(mo){
-    return monthsToFetch.indexOf(mo)<0;
-  });
+  console.log('[CACHE] In cache:',cachedIds.length,'da fetchare:',uncachedIds.length);
 
-  console.log('[CACHE] Mesi in cache:',cachedMonths.length,'da fetchare:',monthsToFetch.length);
+  function doQuery(sm,idsToFetch){
+    if(idsToFetch.length===0) return Promise.resolve([]);
 
-  function doQueryForMonths(sm,monthList){
-    if(monthList.length===0) return Promise.resolve([]);
-
-    // Costruisce un unico range che copre tutti i mesi da fetchare
-    // (primo giorno del mese più vecchio → ultimo momento del mese più recente)
-    var firstMo=monthList[0];
-    var lastMo=monthList[monthList.length-1];
-
-    // Inizio range: max(pastDate, primo del firstMo)
-    var qStart=new Date(Math.max(pastDate.getTime(), new Date(firstMo.y,firstMo.m-1,1).getTime()));
-    // Fine range: min(nowDate, ultimo istante del lastMo)
-    var lastDay=new Date(lastMo.y,lastMo.m,1); // primo del mese dopo
-    var qEnd=new Date(Math.min(nowDate.getTime(), lastDay.getTime()-1));
-
-    var ids=Object.keys(sm);
+    var ids=idsToFetch;
     var mid=Math.ceil(ids.length/2);
     var batches=[ids.slice(0,mid),ids.slice(mid)];
-    var dateWhere='data%20between%20%27'+toARPAISO(qStart)+'%27%20and%20%27'+toARPAISO(qEnd)+'%27';
     var timeout=new Promise(function(_,rej){setTimeout(function(){rej(new Error('timeout'));},25000);});
 
-    var fetches=batches.map(function(batchIds){
-      // idsensore e' tipo number in 647i-nhxk: va quotato con ' e usato OR invece di IN
+    var fetches=batches.filter(function(b){return b.length>0;}).map(function(batchIds){
       var orClause=batchIds.map(function(id){return "idsensore='"+id+"'";}).join(' OR ');
-      var whereStr="data between '"+toARPAISO(qStart)+"' and '"+toARPAISO(qEnd)+"' AND ("+orClause+')';
+      var whereStr="data between '"+startISO+"' and '"+endISO+"' AND ("+orClause+')';
       var url=BASE+'?endpoint=647i-nhxk.json'
         +'&$select=idsensore,max(valore)%20as%20mx,min(valore)%20as%20mn'
         +'&$where='+encodeURIComponent(whereStr)
@@ -1065,22 +1034,14 @@ function loadARPALombardia(pastDate,nowDate,labelPeriodo){
 
     return Promise.race([
       Promise.all(fetches).then(function(results){
-        var misure=results[0].concat(results[1]);
-        // Converti mx/mn in tot: max-min = mm caduti nel periodo
+        var misure=results.reduce(function(a,b){return a.concat(b);},[]);
         misure=misure.map(function(pr){
           var mx=parseFloat(pr.mx)||0;
           var mn=parseFloat(pr.mn)||0;
-          return {idsensore:pr.idsensore, tot:Math.max(0,mx-mn)};
-        });
-        // Salva in cache
-        misure.forEach(function(pr){
-          monthList.forEach(function(mo){
-            var isCurrentMonth=(mo.y===now_year()&&mo.m===now_month());
-            if(!isCurrentMonth) cacheSet(pr.idsensore,mo.y,mo.m,pr.tot);
-          });
-          var lastMoCurr=monthList[monthList.length-1];
-          if(lastMoCurr.y===now_year()&&lastMoCurr.m===now_month())
-            cacheSet(pr.idsensore,lastMoCurr.y,lastMoCurr.m,pr.tot);
+          var tot=Math.max(0,mx-mn);
+          // Salva in cache con la chiave del range esatto
+          cacheRangeSet(pr.idsensore,startISO,endISO,tot);
+          return {idsensore:pr.idsensore,tot:tot};
         });
         return misure;
       }),
@@ -1088,21 +1049,15 @@ function loadARPALombardia(pastDate,nowDate,labelPeriodo){
     ]);
   }
 
-  function assembleMisure(sm,fetchedMisure){
-    // Per i mesi in cache, somma i totali mensili per ogni sensore
+  function assembleMisure(fetchedMisure){
     var rainMap={};
-    // Aggiungi dati fetchati
+    // Dati freschi da ARPA
     fetchedMisure.forEach(function(pr){
-      var id=pr.idsensore;
-      var mm=parseFloat(pr.tot)||0;
-      rainMap[id]=(rainMap[id]||0)+mm;
+      rainMap[pr.idsensore]=(parseFloat(pr.tot)||0);
     });
-    // Aggiungi dati da cache per i mesi non fetchati
-    cachedMonths.forEach(function(mo){
-      allIds.forEach(function(id){
-        var cached=cacheGet(id,mo.y,mo.m);
-        if(cached!==null) rainMap[id]=(rainMap[id]||0)+cached;
-      });
+    // Dati dalla cache (range identico, nessuna sovrapposizione)
+    cachedIds.forEach(function(c){
+      rainMap[c.id]=c.tot;
     });
     return Object.keys(rainMap).map(function(id){return {idsensore:id,tot:rainMap[id]};});
   }
@@ -1121,7 +1076,7 @@ function loadARPALombardia(pastDate,nowDate,labelPeriodo){
     });
     var out=selectUniform(allSt,200);
     if(out.length<5) throw new Error('pochi dati');
-    var fromCache=cachedMonths.length>0&&monthsToFetch.length===0;
+    var fromCache=cachedIds.length>0&&uncachedIds.length===0;
     console.log('[ARPA] OK:',allSt.length,'->',out.length,'stazioni'+(fromCache?' (da cache)':''));
     render(out, fromCache?'🟢 ARPA cache':'🟢 ARPA live', labelPeriodo);
   }
@@ -1142,13 +1097,18 @@ function loadARPALombardia(pastDate,nowDate,labelPeriodo){
         var sm2={};
         selected.forEach(function(s){sm2[s.idsensore]=s;});
         ARPA_STATIONS=selected;
-        return doQueryForMonths(sm2,monthsToFetch).then(function(fetched){
-          return {stMap:sm2,misure:assembleMisure(sm2,fetched)};
+        // Aggiorna allIds e uncachedIds con le nuove stazioni
+        var newAllIds=Object.keys(sm2);
+        var newUncachedIds=newAllIds.filter(function(id){
+          return cacheRangeGet(id,startISO,endISO,includesNow)===null;
+        });
+        return doQuery(sm2,newUncachedIds).then(function(fetched){
+          return {stMap:sm2,misure:assembleMisure(fetched)};
         });
       });
   } else {
-    promise=doQueryForMonths(stMap,monthsToFetch).then(function(fetched){
-      return {stMap:stMap,misure:assembleMisure(stMap,fetched)};
+    promise=doQuery(stMap,uncachedIds).then(function(fetched){
+      return {stMap:stMap,misure:assembleMisure(fetched)};
     });
   }
 
