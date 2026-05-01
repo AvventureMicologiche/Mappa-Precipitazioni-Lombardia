@@ -569,8 +569,8 @@ function selectUniform(stazioni, maxTotal){
   if(stazioni.length<=maxTotal) return stazioni;
   
   var LAT_MIN=44.0, LAT_MAX=46.7, LON_MIN=8.4, LON_MAX=11.5;
-  var GRID_W=12, GRID_H=10; // 120 celle
-  var MAX_PER_CELL=Math.ceil(maxTotal/(GRID_W*GRID_H))+1;
+  var GRID_W=10, GRID_H=8; // 80 celle
+  var MAX_PER_CELL=Math.ceil(maxTotal/(GRID_W*GRID_H))+2;
   
   var grid={};
   var selected=[];
@@ -984,17 +984,21 @@ function loadARPALombardia(pastDate,nowDate,labelPeriodo){
   var needFetch=Object.keys(stMap).length<5;
 
   function doQuery(sm){
-    var ids=Object.keys(sm).join(',');
+    // Nessun filtro IN() per evitare URL troppo lunghi
+    // Scarica tutte le misure e filtra lato client
     var prUrl=BASE+'?endpoint=647i-nhxk.json'
       +'&$select=idsensore,sum(valore)%20as%20tot'
       +'&$where=data%20between%20%27'+toARPAISO(pastDate)+'%27%20and%20%27'+toARPAISO(nowDate)+'%27'
-      +encodeURIComponent(' AND idsensore IN('+ids+')')
       +'&$group=idsensore&$limit=5000';
     var timeout=new Promise(function(_,rej){setTimeout(function(){rej(new Error('timeout'));},25000);});
     return Promise.race([
       fetch(prUrl).then(function(r){if(!r.ok)throw new Error('HTTP '+r.status);return r.json();}),
       timeout
-    ]).then(function(misure){return {stMap:sm,misure:misure};});
+    ]).then(function(misure){
+      // Filtra lato client: tieni solo le stazioni in stMap
+      var filtered=misure.filter(function(pr){return sm[pr.idsensore];});
+      return {stMap:sm,misure:filtered};
+    });
   }
 
   var promise;
