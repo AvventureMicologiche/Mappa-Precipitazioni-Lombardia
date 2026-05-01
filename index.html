@@ -244,7 +244,7 @@ h1{font-size:13px;font-weight:600;white-space:nowrap}
   <div class="hdr-l">
     <span style="font-size:18px">🌧</span>
     <div>
-      <h1>Precipitazioni Lombardia <span style="font-size:10px;font-weight:400;opacity:.6;letter-spacing:.05em;">(BETA V1.9)</span></h1>
+      <h1>Precipitazioni Lombardia <span style="font-size:10px;font-weight:400;opacity:.6;letter-spacing:.05em;">(BETA V2.0)</span></h1>
       <div class="hdr-sub" id="datehdr">Seleziona il periodo</div>
     </div>
   </div>
@@ -921,7 +921,7 @@ function tryARPAUpgrade(pastDate,nowDate,labelPeriodo){
   // Usa proxy Netlify per evitare CORS con ARPA
   var BASE='/.netlify/functions/arpa';
   var stUrl=BASE+'?endpoint=nf78-nj6b.json&$limit=500&$select=idsensore,nomestazione,lat,lng,quota,provincia&$where=tipologia=%27Precipitazione%27';
-  var prUrl=BASE+'?endpoint=pstb-pga6.json&$select=idsensore,sum(valore)%20as%20tot&$where=data%20between%20%27'+toARPAISO(pastDate)+'%27%20and%20%27'+toARPAISO(nowDate)+'%27&$group=idsensore&$limit=5000';
+  var prUrl=BASE+'?endpoint=647i-nhxk.json&$select=idsensore,sum(valore)%20as%20tot&$where=data%20between%20%27'+toARPAISO(pastDate)+'%27%20and%20%27'+toARPAISO(nowDate)+'%27&$group=idsensore&$limit=5000';
   var timeout=new Promise(function(_,rej){setTimeout(function(){rej(new Error('timeout'));},6000);});
   Promise.race([
     Promise.all([fetch(stUrl),fetch(prUrl)]).then(function(rs){
@@ -966,7 +966,7 @@ function loadARPALombardia(pastDate,nowDate,labelPeriodo){
   // Prima tenta ARPA con timeout 8s, altrimenti Open-Meteo (dati reali, no CORS)
   var BASE='/.netlify/functions/arpa';
   var stUrl=BASE+'?endpoint=nf78-nj6b.json&$limit=500&$select=idsensore,nomestazione,lat,lng,quota,provincia&$where=tipologia=%27Precipitazione%27';
-  var prUrl=BASE+'?endpoint=pstb-pga6.json&$select=idsensore,sum(valore)%20as%20tot&$where=data%20between%20%27'+toARPAISO(pastDate)+'%27%20and%20%27'+toARPAISO(nowDate)+'%27&$group=idsensore&$limit=5000';
+  var prUrl=BASE+'?endpoint=647i-nhxk.json&$select=idsensore,sum(valore)%20as%20tot&$where=data%20between%20%27'+toARPAISO(pastDate)+'%27%20and%20%27'+toARPAISO(nowDate)+'%27&$group=idsensore&$limit=5000';
 
   var arpaTimeout=new Promise(function(_,rej){setTimeout(function(){rej(new Error('timeout'));},8000);});
 
@@ -984,13 +984,11 @@ function loadARPALombardia(pastDate,nowDate,labelPeriodo){
         if(!isNaN(lat)&&!isNaN(lon)&&lat>44&&lat<47&&lon>7&&lon<12)
           stMap[s.idsensore]={n:s.nomestazione||'—',lat:lat,lon:lon,q:s.quota||'—',p:s.provincia||'—'};
       });
-      console.log('[ARPA] Misure ricevute:',res[1].length,'primo:', res[1][0]);
       var rainMap={};
       res[1].forEach(function(pr){
         var mm=parseFloat(pr.tot);
         if(!isNaN(mm)&&mm>=0) rainMap[pr.idsensore]=mm;
       });
-      console.log('[ARPA] rainMap size:',Object.keys(rainMap).length);
       var allSt=Object.keys(stMap).map(function(id){
         var st=stMap[id];
         var mm=rainMap[id]||0;
