@@ -291,7 +291,7 @@ h1{font-size:13px;font-weight:600;white-space:nowrap}
       <!-- Handle: sempre visibile, tap per aprire/chiudere -->
       <div class="tp-handle" id="tp-handle">
         <div class="tp-handle-bar"></div>
-        <div class="tp-title">🕒 Periodo</div>
+        <div class="tp-title">🕒 Seleziona periodo</div>
       </div>
       <!-- Contenuto: nascosto quando collassato -->
       <div class="tp-content">
@@ -639,7 +639,8 @@ if(screenW<=480){
 } else {
   initZoom = 8.5;  // desktop: era 8, ora 8.5
 }
-var map=L.map('map',{zoomSnap:0.5,zoomDelta:0.5}).setView([45.55,9.85], initZoom);
+var initCenter=(screenW<=600)?[45.85,9.85]:[45.55,9.85];
+var map=L.map('map',{zoomSnap:0.5,zoomDelta:0.5}).setView(initCenter, initZoom);
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{
   maxZoom:19,subdomains:'abc',
   attribution:'© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors | ARPA Lombardia'
