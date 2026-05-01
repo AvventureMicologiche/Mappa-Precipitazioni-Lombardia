@@ -984,11 +984,13 @@ function loadARPALombardia(pastDate,nowDate,labelPeriodo){
         if(!isNaN(lat)&&!isNaN(lon)&&lat>44&&lat<47&&lon>7&&lon<12)
           stMap[s.idsensore]={n:s.nomestazione||'—',lat:lat,lon:lon,q:s.quota||'—',p:s.provincia||'—'};
       });
+      console.log('[ARPA] Misure ricevute:',res[1].length,'primo:', res[1][0]);
       var rainMap={};
       res[1].forEach(function(pr){
         var mm=parseFloat(pr.tot);
         if(!isNaN(mm)&&mm>=0) rainMap[pr.idsensore]=mm;
       });
+      console.log('[ARPA] rainMap size:',Object.keys(rainMap).length);
       var allSt=Object.keys(stMap).map(function(id){
         var st=stMap[id];
         var mm=rainMap[id]||0;
