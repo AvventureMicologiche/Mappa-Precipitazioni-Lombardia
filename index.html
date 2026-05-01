@@ -305,10 +305,9 @@ h1{font-size:13px;font-weight:600;white-space:nowrap}
         <div class="tp-grid4">
           <div class="tp-btn" data-type="d" data-val="7">7d</div>
           <div class="tp-btn" data-type="d" data-val="15">15d</div>
+          <div class="tp-btn" data-type="d" data-val="20">20d</div>
           <div class="tp-btn" data-type="d" data-val="30">30d</div>
-
         </div>
-
         <div class="tp-custom-btn" id="btn-custom">📅 Date personalizzate</div>
         <div id="custom-box">
           <div class="cd-lbl">Data inizio</div>
@@ -1393,6 +1392,7 @@ setRegionBorder('lombardia',function(){
           });
         }
       });
+      stazioni=selectUniform(stazioni,200);
       if(stazioni.length>=5){
         ARPA_STATIONS=stazioni;
         console.log('[ARPA] Stazioni caricate:',stazioni.length);
