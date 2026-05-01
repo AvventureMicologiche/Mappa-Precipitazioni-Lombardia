@@ -989,15 +989,15 @@ function loadARPALombardia(pastDate,nowDate,labelPeriodo){
         var mm=parseFloat(pr.tot);
         if(!isNaN(mm)&&mm>=0) rainMap[pr.idsensore]=mm;
       });
-      var out=[];
-      Object.keys(stMap).forEach(function(id){
+      var allSt=Object.keys(stMap).map(function(id){
         var st=stMap[id];
         var mm=rainMap[id]||0;
-        out.push({n:st.n,lat:st.lat,lon:st.lon,q:st.q,p:st.p,
-                  mm:mm<0.5?0:Math.round(mm*10)/10});
+        return {n:st.n,lat:st.lat,lon:st.lon,q:st.q,p:st.p,
+                mm:mm<0.5?0:Math.round(mm*10)/10};
       });
+      var out=selectUniform(allSt,200);
       if(out.length<5) throw new Error('pochi dati');
-      console.log('[ARPA] OK, stazioni:',out.length);
+      console.log('[ARPA] OK:',allSt.length,'->',out.length,'stazioni');
       render(out,'🟢 ARPA live',labelPeriodo);
     })
     .catch(function(e){
