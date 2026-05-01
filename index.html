@@ -963,48 +963,68 @@ function tryARPAUpgrade(pastDate,nowDate,labelPeriodo){
 
 function loadARPALombardia(pastDate,nowDate,labelPeriodo){
   var BASE='/.netlify/functions/arpa';
-  var stUrl=BASE+'?endpoint=nf78-nj6b.json&$limit=500&$select=idsensore,nomestazione,lat,lng,quota,provincia&$where=tipologia=%27Precipitazione%27';
 
-  // Step 1: carica stazioni pluviometriche
-  fetch(stUrl)
-    .then(function(r){if(!r.ok)throw new Error('HTTP '+r.status);return r.json();})
-    .then(function(stazioni){
-      var stMap={};
-      stazioni.forEach(function(s){
-        var lat=parseFloat(s.lat),lon=parseFloat(s.lng);
-        if(!isNaN(lat)&&!isNaN(lon)&&lat>44&&lat<47&&lon>7&&lon<12)
-          stMap[s.idsensore]={n:s.nomestazione||'—',lat:lat,lon:lon,q:s.quota||0,p:s.provincia||'—'};
+  // Usa ARPA_STATIONS già caricate e selezionate a 200 al boot
+  // Costruisce stMap direttamente da esse
+  var stazioni=ARPA_STATIONS||LOMBARDIA_STATIONS;
+  var stMap={};
+  stazioni.forEach(function(s){
+    if(s.id) stMap[s.id]={n:s.n,lat:s.lat,lon:s.lon,q:s.q,p:s.p};
+  });
+
+  // Se stMap vuoto (stazioni senza id) usa approccio diverso
+  // Le stazioni ARPA hanno idsensore salvato durante il boot
+  if(Object.keys(stMap).length<5 && ARPA_STATIONS && ARPA_STATIONS[0] && ARPA_STATIONS[0].idsensore){
+    ARPA_STATIONS.forEach(function(s){
+      stMap[s.idsensore]={n:s.n||s.nomestazione,lat:s.lat,lon:s.lon,q:s.q||s.quota||0,p:s.p||s.provincia||'—'};
+    });
+  }
+
+  // Se ancora vuoto, scarica stazioni da ARPA
+  var needFetch=Object.keys(stMap).length<5;
+
+  function doQuery(sm){
+    var ids=Object.keys(sm).join(',');
+    var prUrl=BASE+'?endpoint=647i-nhxk.json'
+      +'&$select=idsensore,sum(valore)%20as%20tot'
+      +'&$where=data%20between%20%27'+toARPAISO(pastDate)+'%27%20and%20%27'+toARPAISO(nowDate)+'%27'
+      +encodeURIComponent(' AND idsensore IN('+ids+')')
+      +'&$group=idsensore&$limit=5000';
+    var timeout=new Promise(function(_,rej){setTimeout(function(){rej(new Error('timeout'));},25000);});
+    return Promise.race([
+      fetch(prUrl).then(function(r){if(!r.ok)throw new Error('HTTP '+r.status);return r.json();}),
+      timeout
+    ]).then(function(misure){return {stMap:sm,misure:misure};});
+  }
+
+  var promise;
+  if(needFetch){
+    var stUrl=BASE+'?endpoint=nf78-nj6b.json&$limit=500&$select=idsensore,nomestazione,lat,lng,quota,provincia&$where=tipologia=%27Precipitazione%27';
+    promise=fetch(stUrl)
+      .then(function(r){if(!r.ok)throw new Error('HTTP '+r.status);return r.json();})
+      .then(function(data){
+        var sm={};
+        data.forEach(function(s){
+          var lat=parseFloat(s.lat),lon=parseFloat(s.lng);
+          if(!isNaN(lat)&&!isNaN(lon)&&lat>44&&lat<47&&lon>7&&lon<12)
+            sm[s.idsensore]={n:s.nomestazione||'—',lat:lat,lon:lon,q:s.quota||0,p:s.provincia||'—'};
+        });
+        var selected=selectUniform(Object.values(sm).map(function(v,i){v.idsensore=Object.keys(sm)[i];return v;}),200);
+        var sm2={};
+        selected.forEach(function(s){sm2[s.idsensore]=s;});
+        ARPA_STATIONS=selected;
+        return doQuery(sm2);
       });
-      if(Object.keys(stMap).length<5) throw new Error('poche stazioni');
-      if(Object.keys(stMap).length>5) ARPA_STATIONS=Object.values(stMap);
+  } else {
+    promise=doQuery(stMap);
+  }
 
-      // Step 2: query misure SOLO per gli idsensore pluviometrici
-      var ids=Object.keys(stMap).join(',');
-      var BASE2='/.netlify/functions/arpa';
-      var prUrl=BASE2+'?endpoint=647i-nhxk.json'
-        +'&$select=idsensore,sum(valore)%20as%20tot'
-        +'&$where=data%20between%20%27'+toARPAISO(pastDate)+'%27%20and%20%27'+toARPAISO(nowDate)+'%27'
-        +encodeURIComponent(' AND idsensore IN('+ids+')')
-        +'&$group=idsensore&$limit=5000';
-
-      var timeout=new Promise(function(_,rej){setTimeout(function(){rej(new Error('timeout'));},25000);});
-
-      return Promise.race([
-        fetch(prUrl).then(function(r){if(!r.ok)throw new Error('HTTP '+r.status);return r.json();}),
-        timeout
-      ]).then(function(misure){return {stMap:stMap, misure:misure};});
-    })
+  promise
     .then(function(res){
       var stMap=res.stMap;
       var misure=res.misure;
-      var stMap={};
-      res[0].forEach(function(s){
-        var lat=parseFloat(s.lat),lon=parseFloat(s.lng);
-        if(!isNaN(lat)&&!isNaN(lon)&&lat>44&&lat<47&&lon>7&&lon<12)
-          stMap[s.idsensore]={n:s.nomestazione||'—',lat:lat,lon:lon,q:s.quota||'—',p:s.provincia||'—'};
-      });
       var rainMap={};
-      res[1].forEach(function(pr){
+      misure.forEach(function(pr){
         var mm=parseFloat(pr.tot);
         if(!isNaN(mm)&&mm>=0) rainMap[pr.idsensore]=mm;
       });
@@ -1388,11 +1408,13 @@ setRegionBorder('lombardia',function(){
             n:s.nomestazione||'—',
             lat:lat,lon:lon,
             q:parseInt(s.quota)||0,
-            p:s.provincia||'—'
+            p:s.provincia||'—',
+            idsensore:s.idsensore  // salva per usarlo nelle query misure
           });
         }
       });
       stazioni=selectUniform(stazioni,200);
+      // Salva anche l'idsensore per usarlo nelle query
       if(stazioni.length>=5){
         ARPA_STATIONS=stazioni;
         console.log('[ARPA] Stazioni caricate:',stazioni.length);
