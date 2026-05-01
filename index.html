@@ -984,21 +984,34 @@ function loadARPALombardia(pastDate,nowDate,labelPeriodo){
   var needFetch=Object.keys(stMap).length<5;
 
   function doQuery(sm){
-    // Nessun filtro IN() per evitare URL troppo lunghi
-    // Scarica tutte le misure e filtra lato client
-    var prUrl=BASE+'?endpoint=647i-nhxk.json'
-      +'&$select=idsensore,sum(valore)%20as%20tot'
-      +'&$where=data%20between%20%27'+toARPAISO(pastDate)+'%27%20and%20%27'+toARPAISO(nowDate)+'%27'
-      +'&$group=idsensore&$limit=5000';
+    // Divide gli ID in 2 batch da ~100 per URL più corti
+    var ids=Object.keys(sm);
+    var mid=Math.ceil(ids.length/2);
+    var batches=[ids.slice(0,mid),ids.slice(mid)];
+    var dateWhere='data%20between%20%27'+toARPAISO(pastDate)+'%27%20and%20%27'+toARPAISO(nowDate)+'%27';
+
     var timeout=new Promise(function(_,rej){setTimeout(function(){rej(new Error('timeout'));},25000);});
-    return Promise.race([
-      fetch(prUrl).then(function(r){if(!r.ok)throw new Error('HTTP '+r.status);return r.json();}),
-      timeout
-    ]).then(function(misure){
-      // Filtra lato client: tieni solo le stazioni in stMap
-      var filtered=misure.filter(function(pr){return sm[pr.idsensore];});
-      return {stMap:sm,misure:filtered};
+
+    var fetches=batches.map(function(batchIds){
+      var inClause=encodeURIComponent(' AND idsensore IN('+batchIds.join(',')+')');
+      var url=BASE+'?endpoint=647i-nhxk.json'
+        +'&$select=idsensore,sum(valore)%20as%20tot'
+        +'&$where='+dateWhere+inClause
+        +'&$group=idsensore&$limit=5000';
+      return fetch(url).then(function(r){
+        if(!r.ok) throw new Error('HTTP '+r.status);
+        return r.json();
+      });
     });
+
+    return Promise.race([
+      Promise.all(fetches).then(function(results){
+        // Unisci i risultati dei 2 batch
+        var misure=results[0].concat(results[1]);
+        return {stMap:sm,misure:misure};
+      }),
+      timeout
+    ]);
   }
 
   var promise;
