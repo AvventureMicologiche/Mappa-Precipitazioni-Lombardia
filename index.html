@@ -995,7 +995,7 @@ function loadARPALombardia(pastDate,nowDate,labelPeriodo){
 
     var fetches=batches.filter(function(b){return b.length>0;}).map(function(batchIds){
       var orClause=batchIds.map(function(id){return "idsensore='"+id+"'";}).join(' OR ');
-      var whereStr="data between '"+startISO+"' and '"+endISO+"' AND valore >= '0' AND ("+orClause+')';
+      var whereStr="data between '"+startISO+"' and '"+endISO+"' AND valore >= '0' AND valore <= '500' AND ("+orClause+')';
       var url=BASE+'?endpoint=647i-nhxk.json'
         +'&$select=idsensore,max(valore)%20as%20mx,min(valore)%20as%20mn'
         +'&$where='+encodeURIComponent(whereStr)
@@ -1012,6 +1012,7 @@ function loadARPALombardia(pastDate,nowDate,labelPeriodo){
         var mx=parseFloat(pr.mx)||0;
         var mn=parseFloat(pr.mn)||0;
         var tot=Math.max(0,mx-mn);
+        if(tot>300) tot=0; // cap 300mm/giorno: dato corrotto ARPA
         dayMap[pr.idsensore]=tot;
         try{
           localStorage.setItem(CACHE_VER+dateStr+'_'+pr.idsensore,JSON.stringify({tot:tot,ts:Date.now()}));
@@ -1021,7 +1022,26 @@ function loadARPALombardia(pastDate,nowDate,labelPeriodo){
     });
   }
 
+  function filterOutliers(rainMap){
+    // Filtro IQR: rimuove stazioni con valori anomali rispetto alle altre
+    var vals=Object.keys(rainMap).map(function(id){return rainMap[id];}).filter(function(v){return v>0;});
+    if(vals.length<10) return rainMap; // troppo poche stazioni per calcolare IQR
+    vals.sort(function(a,b){return a-b;});
+    var q1=vals[Math.floor(vals.length*0.25)];
+    var q3=vals[Math.floor(vals.length*0.75)];
+    var iqr=q3-q1;
+    var upper=q3+3*iqr;
+    var filtered={};
+    Object.keys(rainMap).forEach(function(id){
+      filtered[id]=rainMap[id]>upper?0:rainMap[id];
+    });
+    var removed=Object.keys(rainMap).filter(function(id){return rainMap[id]>upper;}).length;
+    if(removed>0) console.log('[IQR] Rimosse',removed,'stazioni anomale, soglia:',Math.round(upper*10)/10,'mm');
+    return filtered;
+  }
+
   function doRenderFinal(sm,rainMap){
+    rainMap=filterOutliers(rainMap);
     var allSt=Object.keys(sm).map(function(id){
       var st=sm[id];
       var mm=rainMap[id]||0;
