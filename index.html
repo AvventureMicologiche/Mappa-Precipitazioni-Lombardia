@@ -924,7 +924,7 @@ function tryARPAUpgrade(pastDate,nowDate,labelPeriodo){
 // ═══════════════════════════════════════════════════════════════
 // CACHE localStorage v3 — chiave per giorno: arpa3_YYYY-MM-DD_idsensore
 // ═══════════════════════════════════════════════════════════════
-var CACHE_VER='arpa5v3_'; // incrementa questo numero ad ogni modifica della logica cache
+var CACHE_VER='arpa5v4_'; // incrementa questo numero ad ogni modifica della logica cache
 function cacheInit(){
   try{
     var toClear=[];
@@ -996,7 +996,7 @@ function loadARPALombardia(pastDate,nowDate,labelPeriodo){
 
     var fetches=batches.filter(function(b){return b.length>0;}).map(function(batchIds){
       var orClause=batchIds.map(function(id){return "idsensore='"+id+"'";}).join(' OR ');
-      var whereStr="data between '"+startISO+"' and '"+endISO+"' AND valore >= '0' AND valore <= '500' AND ("+orClause+')';
+      var whereStr="data between '"+startISO+"' and '"+endISO+"' AND valore >= '0' AND ("+orClause+')';
       var url=BASE+'?endpoint=647i-nhxk.json'
         +'&$select=idsensore,max(valore)%20as%20mx,min(valore)%20as%20mn'
         +'&$where='+encodeURIComponent(whereStr)
