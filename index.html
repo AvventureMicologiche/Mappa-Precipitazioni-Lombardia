@@ -917,87 +917,108 @@ function toARPAISO(d){
 }
 
 function tryARPAUpgrade(pastDate,nowDate,labelPeriodo){
-  // Tenta ARPA live — se risponde entro 6s, aggiorna i dati già mostrati
-  // Usa proxy Netlify per evitare CORS con ARPA
-  var BASE='/.netlify/functions/arpa';
-  var stUrl=BASE+'?endpoint=nf78-nj6b.json&$limit=500&$select=idsensore,nomestazione,lat,lng,quota,provincia&$where=tipologia=%27Precipitazione%27';
-  var prUrl=BASE+'?endpoint=647i-nhxk.json&$select=idsensore,sum(valore)%20as%20tot&$where=data%20between%20%27'+toARPAISO(pastDate)+'%27%20and%20%27'+toARPAISO(nowDate)+'%27&$group=idsensore&$limit=5000';
-  var timeout=new Promise(function(_,rej){setTimeout(function(){rej(new Error('timeout'));},6000);});
-  Promise.race([
-    Promise.all([fetch(stUrl),fetch(prUrl)]).then(function(rs){
-      if(!rs[0].ok||!rs[1].ok) throw new Error('HTTP');
-      return Promise.all([rs[0].json(),rs[1].json()]);
-    }),
-    timeout
-  ])
-  .then(function(res){
-    var stMap={};
-    res[0].forEach(function(s){
-      var lat=parseFloat(s.lat),lon=parseFloat(s.lng);
-      if(!isNaN(lat)&&!isNaN(lon)&&lat>44&&lat<47&&lon>7&&lon<12)
-        stMap[s.idsensore]={n:s.nomestazione,lat:lat,lon:lon,q:s.quota||0,p:s.provincia||'—'};
-    });
-    if(Object.keys(stMap).length>5) ARPA_STATIONS=Object.values(stMap);
-    var rainMap={};
-    res[1].forEach(function(pr){
-      var mm=parseFloat(pr.tot);
-      if(!isNaN(mm)&&mm>=0) rainMap[pr.idsensore]=mm;
-    });
-    var allSt=Object.keys(stMap).map(function(id){
-      var st=stMap[id];
-      var mm=rainMap[id]||0;
-      return {n:st.n,lat:st.lat,lon:st.lon,q:st.q,p:st.p,
-              mm:mm<0.5?0:Math.round(mm*10)/10};
-    });
-    var out=selectUniform(allSt,200);
-    if(out.length>=5){
-      console.log('[ARPA] OK:',allSt.length,'->',out.length,'stazioni');
-      clearMarkers();
-      clearHeatmap();
-      render(out,'🟢 ARPA live',labelPeriodo);
-    }
-  })
-  .catch(function(e){
-    console.log('[ARPA] non disponibile:',e.message);
-  });
+  // Disabilitata: loadARPALombardia gestisce gia' tutto con OR-chain e cache localStorage
+  return;
 }
 
+// ═══════════════════════════════════════════════════════════════
+// CACHE localStorage v3
+// Chiave: arpa3_STARTDATE_ENDDATE_IDSENSORE  Valore: {tot, ts}
+// Pulizia automatica versioni precedenti al boot
+// ═══════════════════════════════════════════════════════════════
+var CACHE_VER='arpa3_';
+var CACHE_6H=6*3600*1000;
+
+function cacheInit(){
+  try{
+    var toClear=[];
+    for(var i=0;i<localStorage.length;i++){
+      var k=localStorage.key(i);
+      if(k&&(k.indexOf('arpa_')===0||k.indexOf('arpa2_')===0)) toClear.push(k);
+    }
+    toClear.forEach(function(k){localStorage.removeItem(k);});
+    if(toClear.length>0) console.log('[CACHE] Pulite',toClear.length,'chiavi vecchie');
+  }catch(e){}
+}
+
+function cacheGet(id,s,e,live){
+  try{
+    var k=CACHE_VER+s.substring(0,10)+'_'+e.substring(0,10)+'_'+id;
+    var raw=localStorage.getItem(k);
+    if(!raw) return null;
+    var obj=JSON.parse(raw);
+    if(live&&(Date.now()-obj.ts)>CACHE_6H) return null;
+    return obj.tot;
+  }catch(ex){return null;}
+}
+
+function cacheSet(id,s,e,tot){
+  try{
+    var k=CACHE_VER+s.substring(0,10)+'_'+e.substring(0,10)+'_'+id;
+    localStorage.setItem(k,JSON.stringify({tot:tot,ts:Date.now()}));
+  }catch(ex){
+    try{
+      var toClear=[];
+      for(var i=0;i<localStorage.length;i++){var k2=localStorage.key(i);if(k2&&k2.indexOf(CACHE_VER)===0)toClear.push(k2);}
+      toClear.forEach(function(k2){localStorage.removeItem(k2);});
+      var k=CACHE_VER+s.substring(0,10)+'_'+e.substring(0,10)+'_'+id;
+      localStorage.setItem(k,JSON.stringify({tot:tot,ts:Date.now()}));
+    }catch(ex2){}
+  }
+}
+
+cacheInit();
+
+// ═══════════════════════════════════════════════════════════════
+// DATA SOURCE: ARPA LOMBARDIA
+// ═══════════════════════════════════════════════════════════════
 function loadARPALombardia(pastDate,nowDate,labelPeriodo){
   var BASE='/.netlify/functions/arpa';
+  var startISO=toARPAISO(pastDate);
+  var endISO=toARPAISO(nowDate);
+  var live=(nowDate.getTime()>Date.now()-3600000);
 
-  // Usa ARPA_STATIONS già caricate e selezionate a 200 al boot
-  // Costruisce stMap direttamente da esse
   var stazioni=ARPA_STATIONS||LOMBARDIA_STATIONS;
   var stMap={};
   stazioni.forEach(function(s){
     if(s.id) stMap[s.id]={n:s.n,lat:s.lat,lon:s.lon,q:s.q,p:s.p};
   });
-
-  // Se stMap vuoto (stazioni senza id) usa approccio diverso
-  // Le stazioni ARPA hanno idsensore salvato durante il boot
   if(Object.keys(stMap).length<5 && ARPA_STATIONS && ARPA_STATIONS[0] && ARPA_STATIONS[0].idsensore){
     ARPA_STATIONS.forEach(function(s){
       stMap[s.idsensore]={n:s.n||s.nomestazione,lat:s.lat,lon:s.lon,q:s.q||s.quota||0,p:s.p||s.provincia||'—'};
     });
   }
-
-  // Se ancora vuoto, scarica stazioni da ARPA
   var needFetch=Object.keys(stMap).length<5;
 
   function doQuery(sm){
-    // Divide gli ID in 2 batch da ~100 per URL più corti
-    var ids=Object.keys(sm);
-    var mid=Math.ceil(ids.length/2);
-    var batches=[ids.slice(0,mid),ids.slice(mid)];
-    var dateWhere='data%20between%20%27'+toARPAISO(pastDate)+'%27%20and%20%27'+toARPAISO(nowDate)+'%27';
+    var allIds=Object.keys(sm);
 
+    // Separa ids in cache da quelli da fetchare
+    var cached={};
+    var toFetch=[];
+    allIds.forEach(function(id){
+      var v=cacheGet(id,startISO,endISO,live);
+      if(v!==null) cached[id]=v;
+      else toFetch.push(id);
+    });
+    console.log('[CACHE] In cache:',Object.keys(cached).length,'da fetchare:',toFetch.length);
+
+    // Se tutto in cache, ritorna subito
+    if(toFetch.length===0){
+      var result=allIds.map(function(id){return {idsensore:id,tot:cached[id]};});
+      return Promise.resolve(result);
+    }
+
+    var mid=Math.ceil(toFetch.length/2);
+    var batches=[toFetch.slice(0,mid),toFetch.slice(mid)];
     var timeout=new Promise(function(_,rej){setTimeout(function(){rej(new Error('timeout'));},25000);});
 
-    var fetches=batches.map(function(batchIds){
-      var inClause=encodeURIComponent(' AND idsensore IN('+batchIds.join(',')+')');
+    var fetches=batches.filter(function(b){return b.length>0;}).map(function(batchIds){
+      var orClause=batchIds.map(function(id){return "idsensore='"+id+"'";}).join(' OR ');
+      var whereStr="data between '"+startISO+"' and '"+endISO+"' AND ("+orClause+')';
       var url=BASE+'?endpoint=647i-nhxk.json'
-        +'&$select=idsensore,sum(valore)%20as%20tot'
-        +'&$where='+dateWhere+inClause
+        +'&$select=idsensore,max(valore)%20as%20mx,min(valore)%20as%20mn'
+        +'&$where='+encodeURIComponent(whereStr)
         +'&$group=idsensore&$limit=5000';
       return fetch(url).then(function(r){
         if(!r.ok) throw new Error('HTTP '+r.status);
@@ -1007,12 +1028,46 @@ function loadARPALombardia(pastDate,nowDate,labelPeriodo){
 
     return Promise.race([
       Promise.all(fetches).then(function(results){
-        // Unisci i risultati dei 2 batch
-        var misure=results[0].concat(results[1]);
-        return {stMap:sm,misure:misure};
+        var fetched=results.reduce(function(a,b){return a.concat(b);},[]);
+        // Salva i nuovi dati in cache e converti mx/mn in tot
+        var fetchedMap={};
+        fetched.forEach(function(pr){
+          var mx=parseFloat(pr.mx)||0;
+          var mn=parseFloat(pr.mn)||0;
+          var tot=Math.max(0,mx-mn);
+          cacheSet(pr.idsensore,startISO,endISO,tot);
+          fetchedMap[pr.idsensore]=tot;
+        });
+        // Unisci cache + freschi
+        var result=allIds.map(function(id){
+          var tot=(id in cached)?cached[id]:(fetchedMap[id]||0);
+          return {idsensore:id,tot:tot};
+        });
+        return result;
       }),
       timeout
     ]);
+  }
+
+  function doRender(sm,misure){
+    var rainMap={};
+    misure.forEach(function(pr){
+      var mm=parseFloat(pr.tot)||0;
+      if(mm>=0) rainMap[pr.idsensore]=mm;
+    });
+    var allSt=Object.keys(sm).map(function(id){
+      var st=sm[id];
+      var mm=rainMap[id]||0;
+      return {n:st.n,lat:st.lat,lon:st.lon,q:st.q,p:st.p,
+              mm:mm<0.5?0:Math.round(mm*10)/10};
+    });
+    var out=selectUniform(allSt,200);
+    if(out.length<5) throw new Error('pochi dati');
+    var fromCache=Object.keys(rainMap).length>0&&misure.every(function(pr){
+      return cacheGet(pr.idsensore,startISO,endISO,live)!==null;
+    });
+    console.log('[ARPA] OK:',allSt.length,'->',out.length,'stazioni'+(fromCache?' (cache)':''));
+    render(out,fromCache?'🟢 ARPA cache':'🟢 ARPA live',labelPeriodo);
   }
 
   var promise;
@@ -1031,38 +1086,23 @@ function loadARPALombardia(pastDate,nowDate,labelPeriodo){
         var sm2={};
         selected.forEach(function(s){sm2[s.idsensore]=s;});
         ARPA_STATIONS=selected;
-        return doQuery(sm2);
+        return doQuery(sm2).then(function(misure){
+          return {stMap:sm2,misure:misure};
+        });
       });
   } else {
-    promise=doQuery(stMap);
+    promise=doQuery(stMap).then(function(misure){
+      return {stMap:stMap,misure:misure};
+    });
   }
 
   promise
-    .then(function(res){
-      var stMap=res.stMap;
-      var misure=res.misure;
-      var rainMap={};
-      misure.forEach(function(pr){
-        var mm=parseFloat(pr.tot);
-        if(!isNaN(mm)&&mm>=0) rainMap[pr.idsensore]=mm;
-      });
-      var allSt=Object.keys(stMap).map(function(id){
-        var st=stMap[id];
-        var mm=rainMap[id]||0;
-        return {n:st.n,lat:st.lat,lon:st.lon,q:st.q,p:st.p,
-                mm:mm<0.5?0:Math.round(mm*10)/10};
-      });
-      var out=selectUniform(allSt,200);
-      if(out.length<5) throw new Error('pochi dati');
-      console.log('[ARPA] OK:',allSt.length,'->',out.length,'stazioni');
-      render(out,'🟢 ARPA live',labelPeriodo);
-    })
+    .then(function(res){ doRender(res.stMap,res.misure); })
     .catch(function(e){
       console.warn('[ARPA] fallback Open-Meteo:',e.message);
       loadOpenMeteo(ARPA_STATIONS||LOMBARDIA_STATIONS,pastDate,nowDate,labelPeriodo,'🌍');
     });
 }
-
 // ═══════════════════════════════════════════════════════════════
 // DATA SOURCE: OPEN-METEO
 // ═══════════════════════════════════════════════════════════════
