@@ -1034,7 +1034,7 @@ function loadARPALombardia(pastDate,nowDate,labelPeriodo){
         fetched.forEach(function(pr){
           var mx=parseFloat(pr.mx)||0;
           var mn=parseFloat(pr.mn)||0;
-          var tot=Math.max(0,mx-mn);
+          var tot=Math.max(0,mx-Math.max(0,mn)); // mn<0 = sentinella ARPA (-999)
           cacheSet(pr.idsensore,startISO,endISO,tot);
           fetchedMap[pr.idsensore]=tot;
         });
