@@ -924,13 +924,14 @@ function tryARPAUpgrade(pastDate,nowDate,labelPeriodo){
 // ═══════════════════════════════════════════════════════════════
 // CACHE localStorage v3 — chiave per giorno: arpa3_YYYY-MM-DD_idsensore
 // ═══════════════════════════════════════════════════════════════
-var CACHE_VER='arpa4_';
+var CACHE_VER='arpa5v2_'; // incrementa questo numero ad ogni modifica della logica cache
 function cacheInit(){
   try{
     var toClear=[];
     for(var i=0;i<localStorage.length;i++){
       var k=localStorage.key(i);
-      if(k&&(k.indexOf('arpa_')===0||k.indexOf('arpa2_')===0||k.indexOf('arpa3_')===0)) toClear.push(k);
+      // Pulisce tutte le versioni precedenti della cache
+      if(k&&k.indexOf('arpa')===0&&k.indexOf(CACHE_VER)!==0) toClear.push(k);
     }
     toClear.forEach(function(k){localStorage.removeItem(k);});
     if(toClear.length>0) console.log('[CACHE] Pulite',toClear.length,'chiavi vecchie');
