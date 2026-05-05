@@ -1268,9 +1268,19 @@ function loadData(pastDate,nowDate,labelPeriodo){
   document.getElementById('datehdr').textContent=fmtD(d1)+' – '+fmtD(d2);
   document.getElementById('fonte-tag').textContent='Fonte: ARPA Lombardia';
 
-  // ARPA è la fonte unica — proxy Netlify gestisce il CORS
-  // Fallback su Open-Meteo solo se ARPA non risponde
-  loadARPALombardia(pastDate,nowDate,labelPeriodo);
+  // Sorgente dati:
+  // - Periodi brevi (meno di 2 giorni) o che includono le ultime 6 ore → Open-Meteo (no ritardo)
+  // - Periodi lunghi (7d+) → ARPA (preciso, cache giornaliera)
+  var msRange=nowDate.getTime()-pastDate.getTime();
+  var seiForeRecenti=(nowDate.getTime()>Date.now()-6*3600000); // nowDate è nelle ultime 6 ore
+  var usaOpenMeteo=(msRange<2*24*3600000)||seiForeRecenti;
+
+  if(usaOpenMeteo){
+    document.getElementById('fonte-tag').textContent='Fonte: Open-Meteo';
+    loadOpenMeteo(ARPA_STATIONS||LOMBARDIA_STATIONS,pastDate,nowDate,labelPeriodo,'🌍');
+  } else {
+    loadARPALombardia(pastDate,nowDate,labelPeriodo);
+  }
 }
 
 // ═══════════════════════════════════════════════════════════════
